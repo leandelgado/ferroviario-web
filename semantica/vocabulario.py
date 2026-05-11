@@ -95,13 +95,15 @@ def _build_metricas(df: pd.DataFrame) -> dict[str, dict]:
             try:
                 parsed = json.loads(sinonimos_raw)
                 if isinstance(parsed, list):
-                    raw_synonyms.extend(str(s) for s in parsed)
+                    raw_synonyms.extend(
+                        str(s).replace("_", " ").replace("-", " ") for s in parsed
+                    )
             except json.JSONDecodeError:
                 pass
 
         # 2. campo itself as an implicit synonym
         if row.get("campo"):
-            raw_synonyms.append(str(row["campo"]))
+            raw_synonyms.append(str(row["campo"]).replace("_", " "))
 
         # 3. etiqueta_humana as an implicit synonym
         if row.get("etiqueta_humana"):
