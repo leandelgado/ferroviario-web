@@ -236,10 +236,8 @@ def _build_user_message(pregunta: str, hint: Optional[Intent]) -> str:
     """Build the user message, optionally including the rule-based hint."""
     parts = [f'Input: "{pregunta}"']
     if hint is not None:
-        parts.append(
-            "El parser de reglas obtuvo la siguiente información parcial que "
-            f"puedes usar como contexto: {hint.model_dump()}"
-        )
+        useful = hint.model_dump(include={"metrica", "filtros_linea", "filtros_servicio", "filtros_traccion", "rango_temporal"})
+        parts.append(f"Contexto del parser de reglas: {useful}")
     return "\n".join(parts)
 
 
@@ -253,16 +251,14 @@ class GeminiBackend(LLMBackend):
     Uses the new ``google-genai`` SDK (package name ``google-genai``, import
     path ``google.genai``).
 
-    Primary model: ``gemini-2.5-flash``
-    Fallback model: ``gemini-2.5-pro`` (can be used when primary is unavailable
-    or for more nuanced queries).
+    Primary model: ``gemini-2.5-flash``.
+    To switch to pro, change the MODEL constant to "gemini-2.5-pro".
 
     API key is read from the ``GEMINI_API_KEY`` env var, falling back to
     ``GOOGLE_API_KEY``. A ``RuntimeError`` is raised if neither is set.
     """
 
     PRIMARY_MODEL = "gemini-2.5-flash"
-    FALLBACK_MODEL = "gemini-2.5-pro"
 
     def __init__(self, model: Optional[str] = None) -> None:
         """Initialise the Gemini client.
@@ -301,20 +297,27 @@ class GeminiBackend(LLMBackend):
         from google.genai import types  # local import
 
         user_message = _build_user_message(pregunta, hint)
-        full_prompt = f"{self._system_prompt}\n\n{user_message}"
 
         _logger.debug("Llamando a Gemini model=%s", self._model)
 
         response = self._client.models.generate_content(
             model=self._model,
-            contents=full_prompt,
+            contents=user_message,
             config=types.GenerateContentConfig(
+                system_instruction=self._system_prompt,
                 response_mime_type="application/json",
                 response_schema=Intent,
             ),
         )
 
-        raw_text: str = response.text
+        raw_text = response.text
+        if not raw_text:
+            finish = (response.candidates[0].finish_reason
+                      if response.candidates else "sin candidatos")
+            raise RuntimeError(
+                f"Gemini devolvió respuesta vacía (modelo={self._model}, "
+                f"finish_reason={finish})"
+            )
         _logger.debug("Respuesta Gemini (raw): %s", raw_text[:300])
 
         intent_dict = json.loads(raw_text)
