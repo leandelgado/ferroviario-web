@@ -9,6 +9,7 @@ and cached as a module-level singleton.
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -16,6 +17,9 @@ from typing import Optional
 import pandas as pd
 
 from semantica.normalizacion import normalizar
+
+
+_logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -113,7 +117,7 @@ def _build_metricas(df: pd.DataFrame) -> dict[str, dict]:
         for syn in raw_synonyms:
             normalized_key = normalizar(syn)
             if normalized_key:
-                result[normalized_key] = row_dict
+                result[normalized_key] = row_dict.copy()
 
     return result
 
@@ -191,29 +195,42 @@ def cargar_vocabulario() -> Vocabulario:
     if _vocabulario is not None:
         return _vocabulario
 
-    # --- dim_indicadores ---
-    df_indicadores = pd.read_parquet(_DATA_DIR / "dim_indicadores.parquet")
-    metricas_por_sinonimo = _build_metricas(df_indicadores)
+    try:
+        # --- dim_indicadores ---
+        df_indicadores = pd.read_parquet(_DATA_DIR / "dim_indicadores.parquet")
+        metricas_por_sinonimo = _build_metricas(df_indicadores)
 
-    # --- dim_lineas ---
-    df_lineas = pd.read_parquet(_DATA_DIR / "dim_lineas.parquet")
-    lineas_canonicas: list[str] = df_lineas["linea"].tolist()
-    aliases_linea = _build_aliases_linea(lineas_canonicas)
+        # --- dim_lineas ---
+        df_lineas = pd.read_parquet(_DATA_DIR / "dim_lineas.parquet")
+        lineas_canonicas: list[str] = df_lineas["linea"].tolist()
+        aliases_linea = _build_aliases_linea(lineas_canonicas)
 
-    # --- servicio_mensual ---
-    df_servicio = pd.read_parquet(_DATA_DIR / "servicio_mensual.parquet")
-    servicios: set[str] = set(df_servicio["servicio"].dropna().unique().tolist())
-    tracciones: set[str] = set(df_servicio["tipo_traccion"].dropna().unique().tolist())
+        # --- servicio_mensual ---
+        df_servicio = pd.read_parquet(_DATA_DIR / "servicio_mensual.parquet")
+        servicios: set[str] = set(df_servicio["servicio"].dropna().unique().tolist())
+        tracciones: set[str] = set(df_servicio["tipo_traccion"].dropna().unique().tolist())
 
-    _vocabulario = Vocabulario(
-        metricas_por_sinonimo=metricas_por_sinonimo,
-        lineas_canonicas=lineas_canonicas,
-        aliases_linea=aliases_linea,
-        servicios=servicios,
-        tracciones=tracciones,
-    )
+        _vocabulario = Vocabulario(
+            metricas_por_sinonimo=metricas_por_sinonimo,
+            lineas_canonicas=lineas_canonicas,
+            aliases_linea=aliases_linea,
+            servicios=servicios,
+            tracciones=tracciones,
+        )
 
-    return _vocabulario
+        _logger.info(
+            "Vocabulario cargado: %d sinónimos, %d líneas",
+            len(_vocabulario.metricas_por_sinonimo),
+            len(_vocabulario.lineas_canonicas),
+        )
+
+        return _vocabulario
+    except Exception as e:
+        raise RuntimeError(
+            f"No se pudo cargar el vocabulario desde {_DATA_DIR}. "
+            f"Verificar que los parquets de data/processed/ estén presentes. "
+            f"Error original: {e}"
+        ) from e
 
 
 def resetear_vocabulario() -> None:
