@@ -9,13 +9,13 @@ and a set of deterministic heuristics.
 from __future__ import annotations
 
 import logging
-from typing import NamedTuple
+from typing import Literal, NamedTuple
 
 from rapidfuzz import fuzz, process as fz_process
 
 from semantica.fechas import extraer_fecha
 from semantica.intent import Intent, RangoTemporal
-from semantica.normalizacion import normalizar, tokenizar
+from semantica.normalizacion import normalizar
 from semantica.vocabulario import Vocabulario, cargar_vocabulario
 
 _logger = logging.getLogger(__name__)
@@ -79,6 +79,8 @@ def _extract_metrica(tokens: list[str], voc: Vocabulario) -> tuple[str | None, f
         return sinonimos[best_exact]["campo"], 1.0
 
     # Fuzzy match — use fuzz.ratio to avoid partial-string false positives
+    # fuzz.ratio instead of WRatio: WRatio activates partial-ratio on short n-grams,
+    # inflating scores for unrelated short tokens (e.g. "la" matches "tren de la costa" at 90%).
     all_keys = list(sinonimos.keys())
     best_score = 0.0
     best_campo: str | None = None
@@ -115,6 +117,8 @@ def _extract_lineas(texto_norm: str, voc: Vocabulario) -> tuple[list[str], float
 
     all_text_ngrams = _all_ngrams(tokens)
     for ng in all_text_ngrams:
+        # fuzz.ratio instead of WRatio: WRatio activates partial-ratio on short n-grams,
+        # inflating scores for unrelated short tokens (e.g. "la" matches "tren de la costa" at 90%).
         result = fz_process.extractOne(
             ng, alias_keys, scorer=fuzz.ratio, score_cutoff=88
         )
@@ -172,24 +176,24 @@ def _extract_servicios(texto_norm: str, voc: Vocabulario) -> list[str]:
     return found
 
 
-def _extract_traccion(texto_norm: str) -> list[str]:
+def _extract_traccion(texto_norm: str, voc: Vocabulario) -> list[str]:
     """Return list of matched tracción canonical values."""
-    result: list[str] = []
-    if "diesel" in texto_norm:
-        result.append("Diésel")
-    if "electrico" in texto_norm:
-        result.append("Eléctrico")
+    result = []
+    for traccion in voc.tracciones:
+        traccion_norm = normalizar(traccion)
+        if traccion_norm in texto_norm:
+            result.append(traccion)
     return result
 
 
 def _infer_agregacion(
     texto_norm: str, metrica: str | None, voc: Vocabulario
-) -> tuple[str, list[str]]:
+) -> tuple[Literal["sum", "mean", "max", "min", "none"], list[str]]:
     """Return (agregacion_literal, advertencias)."""
     advertencias: list[str] = []
 
     # Explicit keyword overrides
-    if any(kw in texto_norm for kw in ("cuanto", "cuantos", "total", "suma")):
+    if any(kw in texto_norm for kw in ("cuanto", "cuantos", "cuanta", "cuantas", "total", "suma")):
         return "sum", advertencias
     if any(kw in texto_norm for kw in ("promedio", "media")):
         return "mean", advertencias
@@ -224,7 +228,7 @@ def _infer_tabla_y_granularidad(
     filtros_linea: list[str],
     filtros_servicio: list[str],
     filtros_traccion: list[str],
-) -> tuple[str, str]:
+) -> tuple[Literal["red", "linea", "servicio"], Literal["red_mensual", "linea_mensual", "servicio_mensual"]]:
     """Return (granularidad, tabla)."""
     if filtros_servicio or filtros_traccion:
         return "servicio", "servicio_mensual"
@@ -262,7 +266,7 @@ def parse(pregunta: str) -> ParseResult:
 
     # Step 4: Extract servicios / tracción
     filtros_servicio = _extract_servicios(texto_norm, voc)
-    filtros_traccion = _extract_traccion(texto_norm)
+    filtros_traccion = _extract_traccion(texto_norm, voc)
 
     # Step 5: Extract dates
     rango_temporal = extraer_fecha(texto_norm)
@@ -285,13 +289,13 @@ def parse(pregunta: str) -> ParseResult:
 
     intent = Intent(
         metrica=metrica if metrica is not None else "",
-        agregacion=agregacion,  # type: ignore[arg-type]
+        agregacion=agregacion,
         filtros_linea=filtros_linea,
         filtros_servicio=filtros_servicio,
         filtros_traccion=filtros_traccion,
         rango_temporal=rango_temporal,
-        granularidad=granularidad,  # type: ignore[arg-type]
-        tabla=tabla,  # type: ignore[arg-type]
+        granularidad=granularidad,
+        tabla=tabla,
         confianza=round(confianza_global, 4),
         origen="reglas",
         advertencias=advertencias,
