@@ -19,6 +19,9 @@ MESES = {
     "septiembre": "09", "octubre": "10", "noviembre": "11", "diciembre": "12"
 }
 
+# Build explicit pattern for valid month names to avoid typo fallthrough
+_MESES_PATTERN = '|'.join(MESES.keys())
+
 
 def extraer_fecha(texto: str) -> Optional[RangoTemporal]:
     """
@@ -48,15 +51,14 @@ def extraer_fecha(texto: str) -> Optional[RangoTemporal]:
     # Pattern 1: Month + year explicit
     # Matches: "marzo 2024", "en marzo de 2024", "en marzo del 2024", "marzo de 2024"
     match = re.search(
-        r'(?:en\s+)?(\w+)\s+(?:de\s+|del\s+)?(\d{4})',
+        rf'(?:en\s+)?({_MESES_PATTERN})\s+(?:de\s+|del\s+)?(\d{{4}})',
         texto
     )
     if match:
         mes_texto, ano = match.groups()
-        if mes_texto in MESES:
-            mes = MESES[mes_texto]
-            period = f"{ano}-{mes}"
-            return RangoTemporal(desde=period, hasta=period)
+        mes = MESES[mes_texto]
+        period = f"{ano}-{mes}"
+        return RangoTemporal(desde=period, hasta=period)
 
     # Pattern 2: Range of years
     # Matches: "entre 2010 y 2020", "de 2015 a 2020", "2015-2020", "desde 2015 hasta 2020"
@@ -78,10 +80,10 @@ def extraer_fecha(texto: str) -> Optional[RangoTemporal]:
 
     # Pattern 3: Single year
     # Matches: "en 2023", "durante 2023", "el ano 2023", "ano 2023", or standalone "2023"
+    # Note: Avoids matching years that follow unrecognized words (e.g., "jumlio 2024")
     single_year_patterns = [
         r'(?:en|durante|el\s+ano|ano)\s+(\d{4})',
-        r'^(\d{4})$',  # Standalone 4-digit year at start and end
-        r'\s(\d{4})$',  # 4-digit year at end
+        r'^(\d{4})$',  # Standalone 4-digit year (entire string is just the year)
     ]
     for pattern in single_year_patterns:
         match = re.search(pattern, texto)
