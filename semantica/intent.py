@@ -7,9 +7,10 @@ user's analytical intent after parsing their natural language query.
 
 from __future__ import annotations
 
+import re
 from typing import Literal
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class RangoTemporal(BaseModel):
@@ -17,6 +18,22 @@ class RangoTemporal(BaseModel):
 
     desde: str  # formato "YYYY-MM"
     hasta: str  # formato "YYYY-MM"
+
+    @field_validator('desde', 'hasta')
+    @classmethod
+    def validar_formato_periodo(cls, v: str) -> str:
+        if not re.match(r'^\d{4}-\d{2}$', v):
+            raise ValueError(f"Periodo debe ser YYYY-MM, recibido: {v!r}")
+        return v
+
+    @model_validator(mode='after')
+    def validar_orden_cronologico(self) -> 'RangoTemporal':
+        if self.desde > self.hasta:
+            raise ValueError(
+                f"'desde' debe ser anterior o igual a 'hasta', "
+                f"pero se recibió desde={self.desde!r}, hasta={self.hasta!r}"
+            )
+        return self
 
 
 class Intent(BaseModel):
@@ -29,9 +46,9 @@ class Intent(BaseModel):
     agregacion: Literal["sum", "mean", "max", "min", "none"]
 
     # Filtros dimensionales
-    filtros_linea: list[str] = []
-    filtros_servicio: list[str] = []
-    filtros_traccion: list[str] = []
+    filtros_linea: list[str] = Field(default_factory=list)
+    filtros_servicio: list[str] = Field(default_factory=list)
+    filtros_traccion: list[str] = Field(default_factory=list)
 
     # Dimensión temporal
     rango_temporal: RangoTemporal | None = None
@@ -39,13 +56,16 @@ class Intent(BaseModel):
     # Granularidad del análisis
     granularidad: Literal["red", "linea", "servicio"]
 
-    # Tabla analítica a consultar
+    # Tabla analítica a consultar.
+    # Nota: granularidad y tabla son asignados de forma independiente por el
+    # parser (provienen de pipelines de matching distintos) y no se validan
+    # entre sí aquí.
     tabla: Literal["red_mensual", "linea_mensual", "servicio_mensual"]
 
     # Metadatos de calidad de la interpretación
-    confianza: float  # 0.0 a 1.0
+    confianza: float = Field(ge=0.0, le=1.0)
     origen: Literal["reglas", "llm", "hibrido"]
-    advertencias: list[str] = []
+    advertencias: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validar_coherencia_tabla_filtros(self) -> "Intent":
