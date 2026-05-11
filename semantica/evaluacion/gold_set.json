@@ -1,0 +1,492 @@
+[
+  {
+    "id": "q001",
+    "pregunta": "¿Cuántos pasajeros transportó la línea Mitre en 2023?",
+    "esperado": {
+      "metrica": "pax_pagos",
+      "agregacion": "sum",
+      "filtros_linea": ["Mitre"],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2023-01", "hasta": "2023-12"},
+      "granularidad": "linea",
+      "tabla": "linea_mensual"
+    }
+  },
+  {
+    "id": "q002",
+    "pregunta": "Regularidad promedio del Sarmiento en los últimos 3 años",
+    "esperado": {
+      "metrica": "regularidad_absoluta",
+      "agregacion": "mean",
+      "filtros_linea": ["Sarmiento"],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2023-05", "hasta": "2026-05"},
+      "granularidad": "linea",
+      "tabla": "linea_mensual"
+    }
+  },
+  {
+    "id": "q003",
+    "pregunta": "Puntualidad de la red en marzo 2024",
+    "esperado": {
+      "metrica": "regularidad_absoluta",
+      "agregacion": "mean",
+      "filtros_linea": [],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2024-03", "hasta": "2024-03"},
+      "granularidad": "red",
+      "tabla": "red_mensual"
+    }
+  },
+  {
+    "id": "q004",
+    "pregunta": "Cancelaciones en Belgrano Norte y Urquiza entre 2018 y 2020",
+    "esperado": {
+      "metrica": "trenes_cancelados",
+      "agregacion": "sum",
+      "filtros_linea": ["Belgrano Norte", "Urquiza"],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2018-01", "hasta": "2020-12"},
+      "granularidad": "linea",
+      "tabla": "linea_mensual"
+    }
+  },
+  {
+    "id": "q005",
+    "pregunta": "¿Cuántas estaciones tiene el Roca?",
+    "esperado": {
+      "metrica": "estaciones",
+      "agregacion": "none",
+      "filtros_linea": ["Roca"],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": null,
+      "granularidad": "linea",
+      "tabla": "linea_mensual"
+    }
+  },
+  {
+    "id": "q006",
+    "pregunta": "Recaudación total de la red en 2022",
+    "esperado": {
+      "metrica": "recaudacion_pesos",
+      "agregacion": "sum",
+      "filtros_linea": [],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2022-01", "hasta": "2022-12"},
+      "granularidad": "red",
+      "tabla": "red_mensual"
+    }
+  },
+  {
+    "id": "q007",
+    "pregunta": "Cuántos trenes corrió el San Martín el año pasado",
+    "esperado": {
+      "metrica": "trenes_corridos",
+      "agregacion": "sum",
+      "filtros_linea": ["San Martín"],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2025-01", "hasta": "2025-12"},
+      "granularidad": "linea",
+      "tabla": "linea_mensual"
+    }
+  },
+  {
+    "id": "q008",
+    "pregunta": "Extensión de la línea Urquiza",
+    "esperado": {
+      "metrica": "km_linea",
+      "agregacion": "none",
+      "filtros_linea": ["Urquiza"],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": null,
+      "granularidad": "linea",
+      "tabla": "linea_mensual"
+    }
+  },
+  {
+    "id": "q009",
+    "pregunta": "Tasa de cancelación de trenes eléctricos del Mitre en 2020",
+    "esperado": {
+      "metrica": "tasa_cancelacion",
+      "agregacion": "mean",
+      "filtros_linea": ["Mitre"],
+      "filtros_servicio": [],
+      "filtros_traccion": ["Eléctrico"],
+      "rango_temporal": {"desde": "2020-01", "hasta": "2020-12"},
+      "granularidad": "servicio",
+      "tabla": "servicio_mensual"
+    }
+  },
+  {
+    "id": "q010",
+    "pregunta": "¿Cuántos pasajeros transportó la red en 2021?",
+    "esperado": {
+      "metrica": "pax_pagos",
+      "agregacion": "sum",
+      "filtros_linea": [],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2021-01", "hasta": "2021-12"},
+      "granularidad": "red",
+      "tabla": "red_mensual"
+    }
+  },
+  {
+    "id": "q011",
+    "pregunta": "Pasajeros del Mitre, Roca y San Martín en 2023",
+    "esperado": {
+      "metrica": "pax_pagos",
+      "agregacion": "sum",
+      "filtros_linea": ["Mitre", "Roca", "San Martín"],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2023-01", "hasta": "2023-12"},
+      "granularidad": "linea",
+      "tabla": "linea_mensual"
+    }
+  },
+  {
+    "id": "q012",
+    "pregunta": "¿Cuántos trenes canceló el Tren de la Costa en 2021?",
+    "esperado": {
+      "metrica": "trenes_cancelados",
+      "agregacion": "sum",
+      "filtros_linea": ["Tren de la Costa"],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2021-01", "hasta": "2021-12"},
+      "granularidad": "linea",
+      "tabla": "linea_mensual"
+    }
+  },
+  {
+    "id": "q013",
+    "pregunta": "Trenes puntuales del Belgrano Norte en 2019",
+    "esperado": {
+      "metrica": "trenes_puntuales",
+      "agregacion": "sum",
+      "filtros_linea": ["Belgrano Norte"],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2019-01", "hasta": "2019-12"},
+      "granularidad": "linea",
+      "tabla": "linea_mensual"
+    }
+  },
+  {
+    "id": "q014",
+    "pregunta": "Puntualidad relativa del Mitre en 2023",
+    "esperado": {
+      "metrica": "regularidad_relativa",
+      "agregacion": "mean",
+      "filtros_linea": ["Mitre"],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2023-01", "hasta": "2023-12"},
+      "granularidad": "linea",
+      "tabla": "linea_mensual"
+    }
+  },
+  {
+    "id": "q015",
+    "pregunta": "Cumplimiento del programa del Roca en 2024",
+    "esperado": {
+      "metrica": "cumplimiento_programa",
+      "agregacion": "mean",
+      "filtros_linea": ["Roca"],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2024-01", "hasta": "2024-12"},
+      "granularidad": "linea",
+      "tabla": "linea_mensual"
+    }
+  },
+  {
+    "id": "q016",
+    "pregunta": "Mitre y Sarmiento pasajeros en 2022",
+    "esperado": {
+      "metrica": "pax_pagos",
+      "agregacion": "sum",
+      "filtros_linea": ["Mitre", "Sarmiento"],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2022-01", "hasta": "2022-12"},
+      "granularidad": "linea",
+      "tabla": "linea_mensual"
+    }
+  },
+  {
+    "id": "q017",
+    "pregunta": "Trenes km del Roca en 2022",
+    "esperado": {
+      "metrica": "trenes_km",
+      "agregacion": "sum",
+      "filtros_linea": ["Roca"],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2022-01", "hasta": "2022-12"},
+      "granularidad": "linea",
+      "tabla": "linea_mensual"
+    }
+  },
+  {
+    "id": "q018",
+    "pregunta": "Pasajeros por día hábil de la línea Mitre en 2022",
+    "esperado": {
+      "metrica": "pax_dia_habil",
+      "agregacion": "mean",
+      "filtros_linea": ["Mitre"],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2022-01", "hasta": "2022-12"},
+      "granularidad": "linea",
+      "tabla": "linea_mensual"
+    }
+  },
+  {
+    "id": "q019",
+    "pregunta": "Coches km totales de la red en 2023",
+    "esperado": {
+      "metrica": "coches_km",
+      "agregacion": "sum",
+      "filtros_linea": [],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2023-01", "hasta": "2023-12"},
+      "granularidad": "red",
+      "tabla": "red_mensual"
+    }
+  },
+  {
+    "id": "q020",
+    "pregunta": "Trenes atrasados en Belgrano Norte en 2019",
+    "esperado": {
+      "metrica": "trenes_atrasados",
+      "agregacion": "sum",
+      "filtros_linea": ["Belgrano Norte"],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2019-01", "hasta": "2019-12"},
+      "granularidad": "linea",
+      "tabla": "linea_mensual"
+    }
+  },
+  {
+    "id": "q021",
+    "pregunta": "Tarifa media del Mitre en 2024",
+    "esperado": {
+      "metrica": "tarifa_media_pesos",
+      "agregacion": "mean",
+      "filtros_linea": ["Mitre"],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2024-01", "hasta": "2024-12"},
+      "granularidad": "linea",
+      "tabla": "linea_mensual"
+    }
+  },
+  {
+    "id": "q022",
+    "pregunta": "Ocupación media del Sarmiento en 2021",
+    "esperado": {
+      "metrica": "ocupacion_media",
+      "agregacion": "mean",
+      "filtros_linea": ["Sarmiento"],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2021-01", "hasta": "2021-12"},
+      "granularidad": "linea",
+      "tabla": "linea_mensual"
+    }
+  },
+  {
+    "id": "q023",
+    "pregunta": "Trenes programados en el Urquiza en 2023",
+    "esperado": {
+      "metrica": "trenes_programados",
+      "agregacion": "sum",
+      "filtros_linea": ["Urquiza"],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2023-01", "hasta": "2023-12"},
+      "granularidad": "linea",
+      "tabla": "linea_mensual"
+    }
+  },
+  {
+    "id": "q024",
+    "pregunta": "¿Cuántas estaciones tiene la línea Belgrano Sur?",
+    "esperado": {
+      "metrica": "estaciones",
+      "agregacion": "none",
+      "filtros_linea": ["Belgrano Sur"],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": null,
+      "granularidad": "linea",
+      "tabla": "linea_mensual"
+    }
+  },
+  {
+    "id": "q025",
+    "pregunta": "Regularidad de la red en 2020",
+    "esperado": {
+      "metrica": "regularidad_absoluta",
+      "agregacion": "mean",
+      "filtros_linea": [],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2020-01", "hasta": "2020-12"},
+      "granularidad": "red",
+      "tabla": "red_mensual"
+    }
+  },
+  {
+    "id": "q026",
+    "pregunta": "Pax km del Mitre en 2021",
+    "esperado": {
+      "metrica": "pax_km",
+      "agregacion": "sum",
+      "filtros_linea": ["Mitre"],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2021-01", "hasta": "2021-12"},
+      "granularidad": "linea",
+      "tabla": "linea_mensual"
+    }
+  },
+  {
+    "id": "q027",
+    "pregunta": "Servicios realizados en la red en 2021",
+    "esperado": {
+      "metrica": "trenes_corridos",
+      "agregacion": "sum",
+      "filtros_linea": [],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2021-01", "hasta": "2021-12"},
+      "granularidad": "red",
+      "tabla": "red_mensual"
+    }
+  },
+  {
+    "id": "q028",
+    "pregunta": "Cómo fue la regularidad del Belgrano Norte en 2022",
+    "esperado": {
+      "metrica": "regularidad_absoluta",
+      "agregacion": "mean",
+      "filtros_linea": ["Belgrano Norte"],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2022-01", "hasta": "2022-12"},
+      "granularidad": "linea",
+      "tabla": "linea_mensual"
+    }
+  },
+  {
+    "id": "q029",
+    "pregunta": "Trenes diésel del Belgrano Sur cancelados en 2020",
+    "esperado": {
+      "metrica": "trenes_cancelados",
+      "agregacion": "sum",
+      "filtros_linea": ["Belgrano Sur"],
+      "filtros_servicio": [],
+      "filtros_traccion": ["Diésel"],
+      "rango_temporal": {"desde": "2020-01", "hasta": "2020-12"},
+      "granularidad": "servicio",
+      "tabla": "servicio_mensual"
+    }
+  },
+  {
+    "id": "q030",
+    "pregunta": "Demoras en el Belgrano Norte en 2019",
+    "esperado": {
+      "metrica": "trenes_atrasados",
+      "agregacion": "sum",
+      "filtros_linea": ["Belgrano Norte"],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2019-01", "hasta": "2019-12"},
+      "granularidad": "linea",
+      "tabla": "linea_mensual"
+    }
+  },
+  {
+    "id": "q031",
+    "pregunta": "¿Cuántos pasajeros transportó el Sarmiento este año?",
+    "esperado": {
+      "metrica": "pax_pagos",
+      "agregacion": "sum",
+      "filtros_linea": ["Sarmiento"],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2026-01", "hasta": "2026-05"},
+      "granularidad": "linea",
+      "tabla": "linea_mensual"
+    }
+  },
+  {
+    "id": "q032",
+    "pregunta": "Extensión en kilómetros de la línea San Martín",
+    "esperado": {
+      "metrica": "km_linea",
+      "agregacion": "none",
+      "filtros_linea": ["San Martín"],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": null,
+      "granularidad": "linea",
+      "tabla": "linea_mensual"
+    }
+  },
+  {
+    "id": "q033",
+    "pregunta": "Tasa de cancelación promedio de la red entre 2019 y 2022",
+    "esperado": {
+      "metrica": "tasa_cancelacion",
+      "agregacion": "mean",
+      "filtros_linea": [],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2019-01", "hasta": "2022-12"},
+      "granularidad": "red",
+      "tabla": "red_mensual"
+    }
+  },
+  {
+    "id": "q034",
+    "pregunta": "Roca y Sarmiento cuántos trenes corrieron en 2024",
+    "esperado": {
+      "metrica": "trenes_corridos",
+      "agregacion": "sum",
+      "filtros_linea": ["Roca", "Sarmiento"],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2024-01", "hasta": "2024-12"},
+      "granularidad": "linea",
+      "tabla": "linea_mensual"
+    }
+  },
+  {
+    "id": "q035",
+    "pregunta": "¿Cuántos pasajeros km registró la red en los últimos 2 años?",
+    "esperado": {
+      "metrica": "pax_km",
+      "agregacion": "sum",
+      "filtros_linea": [],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": {"desde": "2024-05", "hasta": "2026-05"},
+      "granularidad": "red",
+      "tabla": "red_mensual"
+    }
+  }
+]
