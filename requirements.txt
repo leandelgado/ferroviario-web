@@ -1,0 +1,7 @@
+pydantic>=2.0
+rapidfuzz
+unidecode
+google-genai
+pytest
+pandas
+pyarrow
