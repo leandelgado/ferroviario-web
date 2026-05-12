@@ -17,13 +17,14 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 from typing import TYPE_CHECKING, Any
 
 from motor import plantillas
 
 if TYPE_CHECKING:
-    from motor.respuesta import Comparacion, Dato
+    from motor.respuesta import Comparacion, Dato, TipoRespuesta
     from motor.almacen import Almacen as AlmacenType
     from semantica.intent import Intent
 
@@ -122,7 +123,6 @@ def _build_dim_dict(intent: "Intent", almacen: Any) -> dict:
                 val = r[col]
                 # Convert pandas NA / NaN to None for clean JSON serialization
                 try:
-                    import math
                     if isinstance(val, float) and math.isnan(val):
                         result[col] = None
                         continue
@@ -197,7 +197,10 @@ def _llamar_gemini(
     from google import genai  # local import — keeps module importable without SDK
     from google.genai import types
 
-    client = genai.Client(api_key=api_key)
+    client = genai.Client(
+        api_key=api_key,
+        http_options=types.HttpOptions(timeout=10_000),  # 10 seconds in ms
+    )
     response = client.models.generate_content(
         model="gemini-2.5-flash",
         contents=user_message,
@@ -208,7 +211,13 @@ def _llamar_gemini(
             response_mime_type="text/plain",
         ),
     )
-    texto = response.text.strip()
+    texto = (response.text or "").strip()
+    if not texto:
+        try:
+            finish_reason = response.candidates[0].finish_reason
+        except (IndexError, AttributeError):
+            finish_reason = "unknown"
+        raise ValueError(f"Gemini no devolvió texto (finish_reason={finish_reason!r})")
     return texto
 
 
@@ -231,7 +240,7 @@ def _extraer_filtros(intent: "Intent") -> str:
 
 
 def _fallback_plantillas(
-    tipo: str,
+    tipo: "TipoRespuesta",
     dato_o_comp: "Dato | Comparacion | None",
     advertencias: list[str],
     sugerencias: list[str],
@@ -288,7 +297,7 @@ def generar_nl(
     pregunta: str,
     intent: "Intent",
     dato_o_comp: "Dato | Comparacion | None",
-    tipo: str,
+    tipo: "TipoRespuesta",
     advertencias: list[str],
     sugerencias: list[str],
     almacen: Any,
