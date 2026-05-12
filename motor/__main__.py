@@ -15,8 +15,10 @@ def main() -> None:
         prog="python -m motor",
     )
     parser.add_argument("pregunta", help="Pregunta en lenguaje natural")
-    parser.add_argument("--json", action="store_true", help="Salida en JSON")
-    parser.add_argument("--debug", action="store_true", help="Mostrar intent, datos y metadata")
+    output_group = parser.add_mutually_exclusive_group()
+    output_group.add_argument("--json", action="store_true", help="Salida en JSON")
+    output_group.add_argument("--debug", action="store_true",
+                              help="Mostrar intent, datos y metadata")
     parser.add_argument(
         "--sin-llm-nl",
         action="store_true",

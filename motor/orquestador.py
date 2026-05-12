@@ -75,21 +75,25 @@ def responder(
         # ------------------------------------------------------------------
         # Step 3: Validate coverage
         # ------------------------------------------------------------------
-        resultado = None
-        for validar in [validar_temporal, validar_lineas, validar_metrica_granularidad]:
-            resultado = validar(intent, Almacen)
+        for validar_fn in [validar_temporal, validar_lineas]:
+            resultado = validar_fn(intent, Almacen)
             if not resultado.valido:
                 return _sin_datos_respuesta(pregunta, intent, resultado.mensaje, t0, sin_llm_nl)
+
+        # validar_lineas: placeholder — parser already canonicalises line names;
+        # real validation may be added in Etapa 4
+
+        # Granularity warning: always valid but may carry a non-blocking warning
+        resultado_granularidad = validar_metrica_granularidad(intent, Almacen)
+        if not resultado_granularidad.valido:
+            return _sin_datos_respuesta(pregunta, intent, resultado_granularidad.mensaje, t0, sin_llm_nl)
 
         # ------------------------------------------------------------------
         # Step 4: Execute query
         # ------------------------------------------------------------------
         advertencias: list[str] = []
-
-        # The last validator (validar_metrica_granularidad) always returns
-        # valido=True but may carry a warning in its mensaje.
-        if resultado is not None and resultado.mensaje:
-            advertencias.append(resultado.mensaje)
+        if resultado_granularidad.mensaje:
+            advertencias.append(resultado_granularidad.mensaje)
 
         if intent.tipo in ("comparacion_lineas", "comparacion_periodos"):
             dato_o_comp, adv = ejecutar_comparacion(intent, Almacen)
