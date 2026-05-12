@@ -10,6 +10,7 @@ group. Results are returned as a `Comparacion` with ranking and pairwise diffs.
 from __future__ import annotations
 
 import itertools
+import math
 
 import pandas as pd
 
@@ -19,13 +20,13 @@ from motor.ejecutor import _FORMULAS_RATIOS
 
 
 # ---------------------------------------------------------------------------
-# Private helper
+# Private helpers
 # ---------------------------------------------------------------------------
 
 def _calcular_metrica_grupo(
     df_grupo: pd.DataFrame,
     metrica: str,
-    almacen,
+    agregable: bool,
 ) -> tuple[float, str, list[str]]:
     """Compute metric for a data group.
 
@@ -35,8 +36,9 @@ def _calcular_metrica_grupo(
         Sub-DataFrame for a single line or period.
     metrica:
         The metric column name (campo from dim_indicadores).
-    almacen:
-        The Almacen class used to load dim_indicadores.
+    agregable:
+        Whether the metric can be summed (True) or must be averaged (False).
+        Ignored for ratio metrics.
 
     Returns
     -------
@@ -66,11 +68,6 @@ def _calcular_metrica_grupo(
         valor = numerador / denominador
         agregacion_usada = "ratio_recalculado"
     else:
-        # Look up aggregability from dim_indicadores
-        dim = almacen.obtener("dim_indicadores")
-        dim_row = dim[dim["campo"] == metrica]
-        agregable = dim_row["agregable"].iloc[0] if not dim_row.empty else True
-
         if agregable:
             # Aggregable metrics: always sum for comparisons
             col_numeric = pd.to_numeric(df_grupo[metrica], errors="coerce")
@@ -83,6 +80,25 @@ def _calcular_metrica_grupo(
             agregacion_usada = "mean"
 
     return valor, agregacion_usada, advertencias
+
+
+def _ordenar_y_rankear(
+    items: list[ItemComparacion], direccion_mejor: str
+) -> tuple[list[ItemComparacion], list[str], list[dict]]:
+    """Sort items by value according to direccion_mejor, build ranking and pairwise diferencias."""
+    if direccion_mejor == "mayor":
+        items_sorted = sorted(items, key=lambda x: x.valor, reverse=True)
+    elif direccion_mejor == "menor":
+        items_sorted = sorted(items, key=lambda x: x.valor, reverse=False)
+    else:  # neutral
+        items_sorted = sorted(items, key=lambda x: x.etiqueta)
+
+    ranking = [i.etiqueta for i in items_sorted]
+    diferencias = [
+        {"entre": [a.etiqueta, b.etiqueta], "delta": abs(a.valor - b.valor)}
+        for a, b in itertools.combinations(items_sorted, 2)
+    ]
+    return items_sorted, ranking, diferencias
 
 
 # ---------------------------------------------------------------------------
@@ -119,12 +135,13 @@ def ejecutar_comparacion(intent, almacen) -> tuple[Comparacion, list[str]]:
     metrica = intent.metrica
 
     # ------------------------------------------------------------------
-    # Load dim_indicadores once (needed for unidad and direccion_mejor)
+    # Load dim_indicadores once (needed for unidad, direccion_mejor, agregable)
     # ------------------------------------------------------------------
     dim = almacen.obtener("dim_indicadores")
     dim_row = dim[dim["campo"] == metrica]
     unidad = dim_row["unidad"].iloc[0] if not dim_row.empty else ""
     direccion_mejor = dim_row["direccion_mejor"].iloc[0] if not dim_row.empty else "neutral"
+    agregable = bool(dim_row["agregable"].iloc[0]) if not dim_row.empty else True
 
     # ------------------------------------------------------------------
     # Branch A: comparacion_lineas
@@ -159,36 +176,25 @@ def ejecutar_comparacion(intent, almacen) -> tuple[Comparacion, list[str]]:
         # 5–6. Compute metric per line and build items
         items: list[ItemComparacion] = []
         for linea, df_grupo in df.groupby("linea"):
+            etiqueta = str(linea)
             try:
-                valor, _, adv_grupo = _calcular_metrica_grupo(df_grupo, metrica, almacen)
-            except ValueError:
-                # Skip lines where computation fails (e.g. zero denominator)
+                valor, _, adv_grupo = _calcular_metrica_grupo(df_grupo, metrica, agregable)
+            except ValueError as e:
+                advertencias.append(f"Grupo '{etiqueta}' omitido: {e}")
+                continue
+            if math.isnan(valor):
+                advertencias.append(
+                    f"Todos los valores de '{metrica}' son nulos en este grupo; grupo omitido."
+                )
                 continue
             advertencias.extend(adv_grupo)
-            items.append(ItemComparacion(etiqueta=str(linea), valor=valor, unidad=unidad))
+            items.append(ItemComparacion(etiqueta=etiqueta, valor=valor, unidad=unidad))
 
         if not items:
             raise ValueError("No se pudieron calcular valores para ninguna línea.")
 
-        # 7–8. Sort items by value according to direccion_mejor
-        if direccion_mejor == "mayor":
-            items_sorted = sorted(items, key=lambda i: i.valor, reverse=True)
-        elif direccion_mejor == "menor":
-            items_sorted = sorted(items, key=lambda i: i.valor, reverse=False)
-        else:
-            # neutral: alphabetical by etiqueta
-            items_sorted = sorted(items, key=lambda i: i.etiqueta)
-
-        # 9. Build ranking
-        ranking = [item.etiqueta for item in items_sorted]
-
-        # 10. Build pairwise diferencias
-        diferencias: list[dict] = []
-        for a, b in itertools.combinations(items_sorted, 2):
-            diferencias.append({
-                "entre": [a.etiqueta, b.etiqueta],
-                "delta": abs(a.valor - b.valor),
-            })
+        # 7–10. Sort, rank, diferencias
+        items_sorted, ranking, diferencias = _ordenar_y_rankear(items, direccion_mejor)
 
         return Comparacion(
             eje="linea",
@@ -221,35 +227,27 @@ def ejecutar_comparacion(intent, almacen) -> tuple[Comparacion, list[str]]:
                 )
                 continue
 
+            etiqueta = rango.etiqueta or f"{rango.desde}/{rango.hasta}"
             try:
-                valor, _, adv_grupo = _calcular_metrica_grupo(df_periodo, metrica, almacen)
-            except ValueError as exc:
-                advertencias.append(str(exc))
+                valor, _, adv_grupo = _calcular_metrica_grupo(df_periodo, metrica, agregable)
+            except ValueError as e:
+                advertencias.append(f"Grupo '{etiqueta}' omitido: {e}")
+                continue
+
+            if math.isnan(valor):
+                advertencias.append(
+                    f"Todos los valores de '{metrica}' son nulos en este grupo; grupo omitido."
+                )
                 continue
 
             advertencias.extend(adv_grupo)
-            etiqueta = rango.etiqueta or f"{rango.desde}/{rango.hasta}"
             items_p.append(ItemComparacion(etiqueta=etiqueta, valor=valor, unidad=unidad))
 
         if not items_p:
             raise ValueError("No se pudieron calcular valores para ningún periodo.")
 
-        # 4. Sort by direccion_mejor
-        if direccion_mejor == "mayor":
-            items_p_sorted = sorted(items_p, key=lambda i: i.valor, reverse=True)
-        elif direccion_mejor == "menor":
-            items_p_sorted = sorted(items_p, key=lambda i: i.valor, reverse=False)
-        else:
-            items_p_sorted = sorted(items_p, key=lambda i: i.etiqueta)
-
-        ranking_p = [item.etiqueta for item in items_p_sorted]
-
-        diferencias_p: list[dict] = []
-        for a, b in itertools.combinations(items_p_sorted, 2):
-            diferencias_p.append({
-                "entre": [a.etiqueta, b.etiqueta],
-                "delta": abs(a.valor - b.valor),
-            })
+        # 4. Sort, rank, diferencias
+        items_p_sorted, ranking_p, diferencias_p = _ordenar_y_rankear(items_p, direccion_mejor)
 
         return Comparacion(
             eje="periodo",
