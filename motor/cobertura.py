@@ -1,9 +1,11 @@
 """
 Pure validation functions for query coverage checks.
 
-These functions have no side effects: they receive an intent and an almacen
+These functions have no persistent state: they receive an intent and an almacen
 instance and return a ResultadoCobertura dataclass describing whether the
-query is satisfiable with available data.
+query is satisfiable with available data.  Note that some validators call
+``almacen.obtener()``, which may lazy-load parquet files into the Almacen
+singleton cache as a side effect.
 """
 
 from __future__ import annotations
@@ -39,7 +41,7 @@ _COSTA_VARIANTES = {
 def _es_tren_de_la_costa(lineas: list[str]) -> bool:
     """Return True if any of *lineas* refers to Tren de la Costa."""
     for linea in lineas:
-        if linea.lower() in _COSTA_VARIANTES or "costa" in linea.lower():
+        if linea.lower() in _COSTA_VARIANTES:
             return True
     return False
 

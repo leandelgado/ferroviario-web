@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 # ---------------------------------------------------------------------------
 # Type alias
@@ -81,9 +81,17 @@ class Respuesta(BaseModel):
 
     tipo: TipoRespuesta
     texto_nl: str = ""  # ALWAYS present; empty string is acceptable
-    intent: Any  # semantica.Intent — Any to avoid circular import
+    intent: Any  # semantica.Intent at runtime; Any for serialization flexibility
     dato: Dato | None = None
     comparacion: Comparacion | None = None
     sugerencias: list[str] = Field(default_factory=list)
     advertencias: list[str] = Field(default_factory=list)
     metadata: Metadata = Field(default_factory=Metadata)
+
+    @field_serializer('intent')
+    def serialize_intent(self, intent: Any) -> dict | None:
+        if intent is None:
+            return None
+        if hasattr(intent, 'model_dump'):
+            return intent.model_dump()
+        return str(intent)
