@@ -22,6 +22,20 @@ from semantica.vocabulario import Vocabulario, cargar_vocabulario
 _logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
+# Module-level compiled patterns and constants
+# ---------------------------------------------------------------------------
+
+_COMPARACION_KEYWORDS = (
+    " vs ", "versus", "comparar", "frente a", " contra ", "diferencia entre"
+)
+
+_FERROVIARIO_KEYWORDS = re.compile(
+    r'\b(tren|ferro|ffcc|linea|estacion|pasajero|regularidad|puntualidad|amba|cnrt|servicio|ferrocarril)\b'
+)
+
+_ANIO_RE = re.compile(r'\b(?:19|20)\d{2}\b')
+
+# ---------------------------------------------------------------------------
 # Lazy singleton
 # ---------------------------------------------------------------------------
 
@@ -241,9 +255,6 @@ def _detectar_tipo(
     Returns:
         "simple", "comparacion_lineas", or "comparacion_periodos".
     """
-    _COMPARACION_KEYWORDS = (
-        " vs ", "versus", "comparar", "frente a", "contra", "diferencia entre"
-    )
     es_comparacion = any(kw in texto_norm for kw in _COMPARACION_KEYWORDS)
 
     if not es_comparacion:
@@ -254,7 +265,7 @@ def _detectar_tipo(
         return "comparacion_lineas"
 
     # Multiple distinct years detected → comparacion_periodos
-    anios = re.findall(r'\b(19|20)\d{2}\b', texto_norm)
+    anios = _ANIO_RE.findall(texto_norm)
     if len(set(anios)) >= 2:
         return "comparacion_periodos"
 
@@ -285,12 +296,7 @@ def _es_dominio(texto_norm: str, metrica: str | None, lineas: list[str]) -> bool
     if lineas:
         return True
 
-    _FERROVIARIO_KEYWORDS = (
-        "tren", "ferro", "ffcc", "linea", "estacion", "pasajero",
-        "regularidad", "puntualidad", "amba", "cnrt", "servicio",
-        "ferrocarril",
-    )
-    if any(kw in texto_norm for kw in _FERROVIARIO_KEYWORDS):
+    if _FERROVIARIO_KEYWORDS.search(texto_norm):
         return True
 
     return False

@@ -257,6 +257,10 @@ Output: {{"metrica":"","agregacion":"sum","filtros_linea":[],"filtros_servicio":
 Ejemplo 6 (comparación de líneas):
 Input: "Comparar los pasajeros del Mitre vs el Sarmiento en 2023"
 Output: {{"metrica":"pax_pagos","agregacion":"sum","filtros_linea":["Mitre","Sarmiento"],"filtros_servicio":[],"filtros_traccion":[],"rango_temporal":{{"desde":"2023-01","hasta":"2023-12"}},"granularidad":"linea","tabla":"linea_mensual","confianza":0.93,"origen":"llm","advertencias":[],"es_dominio":true,"tipo":"comparacion_lineas","rangos_temporales":[]}}
+
+Ejemplo 7 (comparación de períodos):
+Input: "Comparar la puntualidad en 2022 vs 2023 para la línea Mitre"
+Output: {{"metrica":"regularidad_absoluta","agregacion":"mean","filtros_linea":["Mitre"],"filtros_servicio":[],"filtros_traccion":[],"rango_temporal":null,"granularidad":"linea","tabla":"linea_mensual","confianza":0.93,"origen":"llm","advertencias":[],"es_dominio":true,"tipo":"comparacion_periodos","rangos_temporales":[{{"desde":"2022-01","hasta":"2022-12","etiqueta":"2022"}},{{"desde":"2023-01","hasta":"2023-12","etiqueta":"2023"}}]}}
 """
 
 
