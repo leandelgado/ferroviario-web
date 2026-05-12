@@ -1,0 +1,17 @@
+[
+  {"pregunta": "Cuántos pasajeros tuvo Mitre en 2023", "tipo_esperado": "dato", "metrica_esperada": "pax_pagos"},
+  {"pregunta": "Cuántos pasajeros tuvo Sarmiento en 2022", "tipo_esperado": "dato", "metrica_esperada": "pax_pagos"},
+  {"pregunta": "Regularidad de la red en 2021", "tipo_esperado": "dato", "metrica_esperada": "regularidad_absoluta"},
+  {"pregunta": "Recaudación total del Roca en 2020", "tipo_esperado": "dato", "metrica_esperada": "recaudacion_pesos"},
+  {"pregunta": "Trenes corridos por Belgrano Norte en 2019", "tipo_esperado": "dato"},
+  {"pregunta": "Pasajeros del Mitre en mayo 2023", "tipo_esperado": "dato"},
+  {"pregunta": "Puntualidad de todas las líneas en 2023", "tipo_esperado": "dato"},
+  {"pregunta": "Cuántos trenes cancelados tuvo el Urquiza en 2021", "tipo_esperado": "dato"},
+  {"pregunta": "Recaudación de la red en 2019", "tipo_esperado": "dato"},
+  {"pregunta": "Trenes programados del San Martín en 2022", "tipo_esperado": "dato"},
+  {"pregunta": "Datos de la red en 1985", "tipo_esperado": "sin_datos"},
+  {"pregunta": "Información del Mitre en 2050", "tipo_esperado": "sin_datos"},
+  {"pregunta": "Comparar puntualidad Mitre vs Sarmiento 2023", "tipo_esperado": "comparacion"},
+  {"pregunta": "Comparar pasajeros Mitre vs Roca 2022", "tipo_esperado": "comparacion"},
+  {"pregunta": "Qué pasó con los pasajeros en 2022 vs 2021", "tipo_esperado": "comparacion"}
+]
