@@ -9,6 +9,7 @@ and a set of deterministic heuristics.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Literal, NamedTuple
 
 from rapidfuzz import fuzz, process as fz_process
@@ -224,6 +225,77 @@ def _infer_agregacion(
         return "mean", advertencias
 
 
+def _detectar_tipo(
+    texto_norm: str,
+    lineas: list[str],
+    rango_temporal: object,
+) -> Literal["simple", "comparacion_lineas", "comparacion_periodos"]:
+    """Detect the query type based on comparison keywords and detected entities.
+
+    Args:
+        texto_norm: Normalised text.
+        lineas: List of canonical line names detected.
+        rango_temporal: The rango_temporal result from extraer_fecha (used only
+                        for presence check; year detection uses regex directly).
+
+    Returns:
+        "simple", "comparacion_lineas", or "comparacion_periodos".
+    """
+    _COMPARACION_KEYWORDS = (
+        " vs ", "versus", "comparar", "frente a", "contra", "diferencia entre"
+    )
+    es_comparacion = any(kw in texto_norm for kw in _COMPARACION_KEYWORDS)
+
+    if not es_comparacion:
+        return "simple"
+
+    # Multiple lines detected → comparacion_lineas
+    if len(lineas) >= 2:
+        return "comparacion_lineas"
+
+    # Multiple distinct years detected → comparacion_periodos
+    anios = re.findall(r'\b(19|20)\d{2}\b', texto_norm)
+    if len(set(anios)) >= 2:
+        return "comparacion_periodos"
+
+    # Comparison detected but axis unclear → default to comparacion_lineas
+    return "comparacion_lineas"
+
+
+def _es_dominio(texto_norm: str, metrica: str | None, lineas: list[str]) -> bool:
+    """Conservative out-of-domain detection.
+
+    Returns False ONLY when ALL of the following are true:
+    - No metric found
+    - No lines/services/traction detected
+    - None of the ferroviario keywords appear in the text
+
+    When in doubt, returns True (conservative).
+
+    Args:
+        texto_norm: Normalised text.
+        metrica: Detected metric (None if not found).
+        lineas: List of detected line names.
+
+    Returns:
+        True if the query is in-domain, False if clearly out-of-domain.
+    """
+    if metrica:
+        return True
+    if lineas:
+        return True
+
+    _FERROVIARIO_KEYWORDS = (
+        "tren", "ferro", "ffcc", "linea", "estacion", "pasajero",
+        "regularidad", "puntualidad", "amba", "cnrt", "servicio",
+        "ferrocarril",
+    )
+    if any(kw in texto_norm for kw in _FERROVIARIO_KEYWORDS):
+        return True
+
+    return False
+
+
 def _infer_tabla_y_granularidad(
     filtros_linea: list[str],
     filtros_servicio: list[str],
@@ -287,6 +359,14 @@ def parse(pregunta: str) -> ParseResult:
 
     requiere_llm = confianza_global < 0.7 or metrica is None
 
+    # Step 9: Detect query type (comparacion_lineas / comparacion_periodos / simple)
+    tipo = _detectar_tipo(texto_norm, filtros_linea, rango_temporal)
+
+    # Step 10: Conservative out-of-domain detection
+    es_dominio = _es_dominio(texto_norm, metrica, filtros_linea)
+    if not es_dominio:
+        requiere_llm = True  # LLM gets final say on OOD queries
+
     intent = Intent(
         metrica=metrica if metrica is not None else "",
         agregacion=agregacion,
@@ -299,6 +379,8 @@ def parse(pregunta: str) -> ParseResult:
         confianza=round(confianza_global, 4),
         origen="reglas",
         advertencias=advertencias,
+        es_dominio=es_dominio,
+        tipo=tipo,
     )
 
     return ParseResult(intent=intent, requiere_llm=requiere_llm)

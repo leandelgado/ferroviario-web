@@ -18,6 +18,7 @@ class RangoTemporal(BaseModel):
 
     desde: str  # formato "YYYY-MM"
     hasta: str  # formato "YYYY-MM"
+    etiqueta: str = ""  # etiqueta humana del periodo, ej. "2022", "primer semestre"
 
     @field_validator('desde', 'hasta')
     @classmethod
@@ -67,6 +68,19 @@ class Intent(BaseModel):
     origen: Literal["reglas", "llm", "hibrido"]
     advertencias: list[str] = Field(default_factory=list)
 
+    # -----------------------------------------------------------------------
+    # Campos opcionales de Etapa 3 (retrocompatibles — tienen defaults)
+    # -----------------------------------------------------------------------
+
+    # Indica si la pregunta pertenece al dominio ferroviario AMBA
+    es_dominio: bool = True
+
+    # Tipo de consulta
+    tipo: Literal["simple", "comparacion_lineas", "comparacion_periodos"] = "simple"
+
+    # Rangos temporales explícitos (sólo para comparacion_periodos)
+    rangos_temporales: list[RangoTemporal] = Field(default_factory=list)
+
     @model_validator(mode="after")
     def validar_coherencia_tabla_filtros(self) -> "Intent":
         """
@@ -75,7 +89,15 @@ class Intent(BaseModel):
         Reglas:
         - Si hay filtros de tracción o servicio → tabla debe ser "servicio_mensual"
         - Si tabla es "red_mensual" → no puede haber ningún filtro dimensional
+
+        Cuando es_dominio=False la validación se omite: metrica puede estar
+        vacía y tabla puede ser "red_mensual" sin filtros (valores por defecto
+        para consultas fuera de dominio).
         """
+        # Short-circuit: preguntas fuera de dominio no aplican reglas de coherencia
+        if not self.es_dominio:
+            return self
+
         tiene_filtros_servicio = bool(self.filtros_servicio)
         tiene_filtros_traccion = bool(self.filtros_traccion)
 

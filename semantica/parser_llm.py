@@ -196,6 +196,9 @@ Devuelve un objeto JSON con estos campos:
 - confianza (float): entre 0.0 y 1.0, tu nivel de certeza sobre la interpretación
 - origen (str): siempre "llm"
 - advertencias (list[str]): lista de advertencias si hay ambigüedad (lista vacía si no hay)
+- es_dominio (bool): true si la pregunta es sobre trenes/AMBA/ferrocarriles, false si no tiene nada que ver
+- tipo (str): "simple", "comparacion_lineas" o "comparacion_periodos"
+- rangos_temporales (list[object]): lista de periodos para comparacion_periodos; cada item: {{"desde": "YYYY-MM", "hasta": "YYYY-MM", "etiqueta": "..."}}
 
 ## Reglas de coherencia
 
@@ -204,23 +207,56 @@ Devuelve un objeto JSON con estos campos:
 - Si todo está vacío → tabla "red_mensual", granularidad "red"
 - La tabla "red_mensual" NO puede tener filtros de ninguna clase
 
+## Detección de fuera de dominio
+
+Cuando la pregunta no tiene absolutamente nada que ver con trenes, ferrocarriles o el sistema ferroviario metropolitano AMBA, devuelve:
+- es_dominio=false
+- metrica=""
+- tabla="red_mensual"
+- granularidad="red"
+- tipo="simple"
+- filtros_linea=[], filtros_servicio=[], filtros_traccion=[]
+- rango_temporal=null
+- rangos_temporales=[]
+- confianza=0.0
+- advertencias=["Pregunta fuera del dominio ferroviario AMBA"]
+
+## Detección de comparaciones
+
+Cuando el usuario pide comparar dos o más entidades, ajusta el campo tipo:
+- Si pide comparar dos o más líneas (ej. "Mitre vs Sarmiento") → tipo="comparacion_lineas", incluye ambas en filtros_linea
+- Si pide comparar dos o más períodos de tiempo (ej. "2022 vs 2023", "primer semestre vs segundo semestre") → tipo="comparacion_periodos", completa rangos_temporales con cada período
+- Para rangos_temporales, cada ítem debe tener: {{"desde": "YYYY-MM", "hasta": "YYYY-MM", "etiqueta": "..."}}
+  - Ejemplo año: {{"desde": "2022-01", "hasta": "2022-12", "etiqueta": "2022"}}
+  - Ejemplo semestre: {{"desde": "2023-01", "hasta": "2023-06", "etiqueta": "primer semestre 2023"}}
+- Para comparacion_lineas, rangos_temporales puede estar vacío (usa rango_temporal normal)
+- Para comparacion_periodos, rango_temporal puede ser null (los rangos están en rangos_temporales)
+
 ## Ejemplos
 
 Ejemplo 1:
 Input: "¿Cuántos pasajeros tuvo la línea Mitre en 2023?"
-Output: {{"metrica":"pax_pagos","agregacion":"sum","filtros_linea":["Mitre"],"filtros_servicio":[],"filtros_traccion":[],"rango_temporal":{{"desde":"2023-01","hasta":"2023-12"}},"granularidad":"linea","tabla":"linea_mensual","confianza":0.95,"origen":"llm","advertencias":[]}}
+Output: {{"metrica":"pax_pagos","agregacion":"sum","filtros_linea":["Mitre"],"filtros_servicio":[],"filtros_traccion":[],"rango_temporal":{{"desde":"2023-01","hasta":"2023-12"}},"granularidad":"linea","tabla":"linea_mensual","confianza":0.95,"origen":"llm","advertencias":[],"es_dominio":true,"tipo":"simple","rangos_temporales":[]}}
 
 Ejemplo 2:
 Input: "¿Qué tan puntual fue la red en marzo 2024?"
-Output: {{"metrica":"regularidad_absoluta","agregacion":"mean","filtros_linea":[],"filtros_servicio":[],"filtros_traccion":[],"rango_temporal":{{"desde":"2024-03","hasta":"2024-03"}},"granularidad":"red","tabla":"red_mensual","confianza":0.9,"origen":"llm","advertencias":[]}}
+Output: {{"metrica":"regularidad_absoluta","agregacion":"mean","filtros_linea":[],"filtros_servicio":[],"filtros_traccion":[],"rango_temporal":{{"desde":"2024-03","hasta":"2024-03"}},"granularidad":"red","tabla":"red_mensual","confianza":0.9,"origen":"llm","advertencias":[],"es_dominio":true,"tipo":"simple","rangos_temporales":[]}}
 
 Ejemplo 3:
 Input: "Cancelaciones en Belgrano Norte y Urquiza entre 2018 y 2020"
-Output: {{"metrica":"trenes_cancelados","agregacion":"sum","filtros_linea":["Belgrano Norte","Urquiza"],"filtros_servicio":[],"filtros_traccion":[],"rango_temporal":{{"desde":"2018-01","hasta":"2020-12"}},"granularidad":"linea","tabla":"linea_mensual","confianza":0.92,"origen":"llm","advertencias":[]}}
+Output: {{"metrica":"trenes_cancelados","agregacion":"sum","filtros_linea":["Belgrano Norte","Urquiza"],"filtros_servicio":[],"filtros_traccion":[],"rango_temporal":{{"desde":"2018-01","hasta":"2020-12"}},"granularidad":"linea","tabla":"linea_mensual","confianza":0.92,"origen":"llm","advertencias":[],"es_dominio":true,"tipo":"simple","rangos_temporales":[]}}
 
 Ejemplo 4:
 Input: "Ocupación media de trenes eléctricos del Roca en 2021"
-Output: {{"metrica":"ocupacion_media","agregacion":"mean","filtros_linea":["Roca"],"filtros_servicio":[],"filtros_traccion":["Eléctrico"],"rango_temporal":{{"desde":"2021-01","hasta":"2021-12"}},"granularidad":"servicio","tabla":"servicio_mensual","confianza":0.93,"origen":"llm","advertencias":[]}}
+Output: {{"metrica":"ocupacion_media","agregacion":"mean","filtros_linea":["Roca"],"filtros_servicio":[],"filtros_traccion":["Eléctrico"],"rango_temporal":{{"desde":"2021-01","hasta":"2021-12"}},"granularidad":"servicio","tabla":"servicio_mensual","confianza":0.93,"origen":"llm","advertencias":[],"es_dominio":true,"tipo":"simple","rangos_temporales":[]}}
+
+Ejemplo 5 (fuera de dominio):
+Input: "¿Cuál es la receta del asado perfecto?"
+Output: {{"metrica":"","agregacion":"sum","filtros_linea":[],"filtros_servicio":[],"filtros_traccion":[],"rango_temporal":null,"granularidad":"red","tabla":"red_mensual","confianza":0.0,"origen":"llm","advertencias":["Pregunta fuera del dominio ferroviario AMBA"],"es_dominio":false,"tipo":"simple","rangos_temporales":[]}}
+
+Ejemplo 6 (comparación de líneas):
+Input: "Comparar los pasajeros del Mitre vs el Sarmiento en 2023"
+Output: {{"metrica":"pax_pagos","agregacion":"sum","filtros_linea":["Mitre","Sarmiento"],"filtros_servicio":[],"filtros_traccion":[],"rango_temporal":{{"desde":"2023-01","hasta":"2023-12"}},"granularidad":"linea","tabla":"linea_mensual","confianza":0.93,"origen":"llm","advertencias":[],"es_dominio":true,"tipo":"comparacion_lineas","rangos_temporales":[]}}
 """
 
 
