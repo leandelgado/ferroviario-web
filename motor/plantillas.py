@@ -7,6 +7,8 @@ Used as fallback when Gemini is unavailable. All output is plain Spanish text
 
 from __future__ import annotations
 
+import math
+
 
 # ---------------------------------------------------------------------------
 # Private render functions
@@ -76,7 +78,8 @@ def _render_comparacion(
     # Add ranking comment if available
     if ranking:
         mejor = ranking[0]
-        texto += f" La {eje_label} {mejor} tuvo mejor desempeño."
+        articulo = "La" if eje == "linea" else "El"
+        texto += f" {articulo} {eje_label} {mejor} tuvo mejor desempeño."
 
     return texto
 
@@ -94,7 +97,7 @@ def _render_sin_datos(mensaje: str, sugerencias: list[str], **kwargs) -> str:
     """Render a no-data response."""
     base = f"No encontré datos para tu consulta."
     if mensaje:
-        base += f" {mensaje}"
+        base += f" {mensaje}" if mensaje.endswith(".") else f" {mensaje}."
     if sugerencias:
         sugerencias_str = " | ".join(sugerencias)
         base += f" Podés intentar con: {sugerencias_str}"
@@ -113,8 +116,10 @@ def _render_error(mensaje: str = "", **kwargs) -> str:
 # Formatting helpers
 # ---------------------------------------------------------------------------
 
-def _formatear_valor(valor: float, unidad: str) -> str:
+def _formatear_valor(valor: float, unidad: str = "") -> str:
     """Format a numeric value with optional unit suffix."""
+    if math.isnan(valor):
+        return f"sin dato ({unidad})" if unidad else "sin dato"
     if abs(valor) >= 1_000_000:
         return f"{valor / 1_000_000:.1f}M"
     if abs(valor) >= 1_000:

@@ -76,8 +76,13 @@ def ejecutar_simple(intent, almacen: Almacen) -> tuple[Dato, list[str]]:
     # ------------------------------------------------------------------
     # Step 3: Apply line filter (only if "linea" column exists)
     # ------------------------------------------------------------------
-    if intent.filtros_linea and "linea" in df.columns:
-        df = df[df["linea"].isin(intent.filtros_linea)]
+    if intent.filtros_linea:
+        if "linea" in df.columns:
+            df = df[df["linea"].isin(intent.filtros_linea)]
+        else:
+            advertencias.append(
+                f"Tabla '{intent.tabla}' no tiene columna 'linea'; filtro de línea ignorado."
+            )
 
     # ------------------------------------------------------------------
     # Step 4: Check data exists
@@ -95,6 +100,12 @@ def ejecutar_simple(intent, almacen: Almacen) -> tuple[Dato, list[str]]:
         )
 
     # ------------------------------------------------------------------
+    # Step 5b: Load dim_indicadores once (used in steps 6 and 7)
+    # ------------------------------------------------------------------
+    dim = almacen.obtener("dim_indicadores")
+    dim_row = dim[dim["campo"] == metrica]
+
+    # ------------------------------------------------------------------
     # Step 6: Aggregate / recalculate
     # ------------------------------------------------------------------
     if metrica in _FORMULAS_RATIOS:
@@ -108,8 +119,6 @@ def ejecutar_simple(intent, almacen: Almacen) -> tuple[Dato, list[str]]:
         agregacion_usada = "ratio_recalculado"
     else:
         # Look up aggregability from dim_indicadores
-        dim = almacen.obtener("dim_indicadores")
-        dim_row = dim[dim["campo"] == metrica]
         agregable = dim_row["agregable"].iloc[0] if not dim_row.empty else True
 
         # Requested aggregation from intent
@@ -125,22 +134,24 @@ def ejecutar_simple(intent, almacen: Almacen) -> tuple[Dato, list[str]]:
         col_numeric = pd.to_numeric(df[metrica], errors="coerce")
         if agg == "sum":
             valor = col_numeric.sum()
+            agregacion_usada = agg
         elif agg == "mean":
             valor = col_numeric.mean()
+            agregacion_usada = agg
         elif agg == "max":
             valor = col_numeric.max()
+            agregacion_usada = agg
         elif agg == "min":
             valor = col_numeric.min()
+            agregacion_usada = agg
         else:
             valor = col_numeric.mean()
-
-        agregacion_usada = agg
+            advertencias.append(f"Agregación '{agg}' no reconocida; se usó promedio.")
+            agregacion_usada = "mean"
 
     # ------------------------------------------------------------------
-    # Step 7: Get metadata from dim_indicadores
+    # Step 7: Get metadata from dim_indicadores (dim/dim_row already loaded)
     # ------------------------------------------------------------------
-    dim = almacen.obtener("dim_indicadores")
-    dim_row = dim[dim["campo"] == metrica]
     etiqueta_humana = (
         dim_row["etiqueta_humana"].iloc[0] if not dim_row.empty else metrica
     )
