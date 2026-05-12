@@ -30,7 +30,8 @@ _COMPARACION_KEYWORDS = (
 )
 
 _FERROVIARIO_KEYWORDS = re.compile(
-    r'\b(tren|ferro|ffcc|linea|estacion|pasajero|regularidad|puntualidad|amba|cnrt|servicio|ferrocarril)\b'
+    r'\b(tren(?:es)?|ferro|ffcc|lineas?|estacion(?:es)?|pasajeros?'
+    r'|regularidad|puntualidad|amba|cnrt|servicios?|ferrocarril)\b'
 )
 
 _ANIO_RE = re.compile(r'\b(?:19|20)\d{2}\b')

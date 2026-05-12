@@ -53,6 +53,18 @@ from semantica.parser_reglas import _detectar_tipo, _es_dominio
         ["Mitre", "Sarmiento"],
         "simple",
     ),
+    # " contra " (space-padded) triggers comparison
+    (
+        "mitre contra sarmiento en 2023",
+        ["Mitre", "Sarmiento"],
+        "comparacion_lineas",
+    ),
+    # "contradictorios" should NOT trigger comparison
+    (
+        "datos contradictorios en la red",
+        [],
+        "simple",
+    ),
 ])
 def test_detectar_tipo(pregunta, lineas, expected_tipo):
     """_detectar_tipo returns correct query type for parametrized cases."""
@@ -99,6 +111,10 @@ def test_detectar_tipo_with_raw_text_normalization():
     ("pasajeros por linea en 2022", None, [], True),
     # Tricky: "alineacion" should NOT match "linea" at word boundary
     ("alineacion de equipos deportivos", None, [], False),
+    # Plurals must match ferroviario keywords
+    ("pasajeros en 2023", None, [], True),   # "pasajeros" → ferroviario
+    ("servicios corridos", None, [], True),  # "servicios" → ferroviario
+    ("trenes puntuales", None, [], True),    # "trenes" → ferroviario
 ])
 def test_es_dominio(pregunta_norm, metrica, lineas, expected):
     """_es_dominio correctly classifies in-domain vs out-of-domain queries."""
