@@ -23,10 +23,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 @pytest.fixture(autouse=True)
 def reset_rate_limit():
-    """Reset slowapi's in-memory storage before each test."""
+    """Reset slowapi's in-memory storage before and after each test."""
     from web.rate_limit import limiter
     limiter._storage.reset()
     yield
+    limiter._storage.reset()  # teardown: clean up after each test
 
 
 @pytest.fixture(autouse=True)
