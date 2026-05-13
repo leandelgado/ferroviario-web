@@ -7,4 +7,4 @@ pandas
 pyarrow
 fastapi
 slowapi
-uvicorn
+uvicorn[standard]
