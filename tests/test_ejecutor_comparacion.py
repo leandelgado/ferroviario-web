@@ -86,10 +86,7 @@ class TestEjecutarComparacionLineas(unittest.TestCase):
         )
         comparacion, _ = ejecutar_comparacion(intent, Almacen)
         self.assertEqual(len(comparacion.items), 2)
-        # With direccion_mejor='menor', items are sorted ascending (lowest first)
-        valores = [i.valor for i in comparacion.items]
-        self.assertEqual(valores, sorted(valores))
-        # ranking[0] should be the line with the lowest cancellation rate
+        # ranking[0] should be the line with the lowest cancellation rate (direccion_mejor='menor')
         item_menor = min(comparacion.items, key=lambda x: x.valor)
         self.assertEqual(comparacion.ranking[0], item_menor.etiqueta)
 

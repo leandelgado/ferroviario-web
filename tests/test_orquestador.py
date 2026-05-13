@@ -97,10 +97,9 @@ class TestOrquestador(unittest.TestCase):
         self.assertIn(resp.tipo, ("dato", "ood", "sin_datos", "error", "comparacion"))
 
     def test_respuesta_fuente_nl_plantilla_cuando_sin_llm(self):
-        """With sin_llm_nl=True, fuente_nl must be 'plantilla'."""
+        """With sin_llm_nl=True, fuente_nl must be 'plantilla' for all tipos."""
         resp = responder("pasajeros Mitre 2023", sin_llm_nl=True, forzar_reglas=True)
-        if resp.tipo in ("dato", "ood", "sin_datos"):
-            self.assertEqual(resp.metadata.fuente_nl, "plantilla")
+        self.assertEqual(resp.metadata.fuente_nl, "plantilla")
 
     def test_respuesta_red_2023(self):
         """Network-level query should work without line filters."""

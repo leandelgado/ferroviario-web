@@ -123,7 +123,7 @@ class TestValidarMetricaGranularidad(unittest.TestCase):
         """A servicio-level metric against red_mensual should return valido=True but non-empty mensaje."""
         # Find a metric with granularidad_minima == "servicio" from dim_indicadores
         dim = Almacen.obtener("dim_indicadores")
-        filas_servicio = dim[dim.get("granularidad_minima", dim.iloc[:, 0]) == "servicio"] if "granularidad_minima" in dim.columns else dim.iloc[0:0]
+        filas_servicio = dim[dim["granularidad_minima"] == "servicio"]
 
         if filas_servicio.empty:
             self.skipTest("No hay métricas con granularidad_minima=servicio en dim_indicadores")
