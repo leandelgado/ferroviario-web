@@ -31,6 +31,9 @@ def _merge(intent_reglas: Intent, intent_llm: Intent) -> Intent:
     3. Set origen = "hibrido"
     4. Combine advertencias from both parsers
     5. Set confianza as the max of the two
+    6. If rules-parser detected es_dominio=False, preserve it — only the rules
+       parser performs OOD detection; the LLM (or StubBackend) always defaults
+       to es_dominio=True, which would silently override a valid OOD signal.
 
     Args:
         intent_reglas: Intent from rule-based parser with origen="reglas"
@@ -44,11 +47,16 @@ def _merge(intent_reglas: Intent, intent_llm: Intent) -> Intent:
     )
     confianza = max(intent_reglas.confianza, intent_llm.confianza)
 
+    # If the rules parser detected an out-of-domain query, preserve that signal.
+    # The LLM defaults to es_dominio=True and would otherwise silently mask OOD.
+    es_dominio = intent_llm.es_dominio and intent_reglas.es_dominio
+
     return intent_llm.model_copy(
         update={
             "origen": "hibrido",
             "advertencias": combined_advertencias,
             "confianza": confianza,
+            "es_dominio": es_dominio,
         }
     )
 

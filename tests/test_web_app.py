@@ -90,27 +90,29 @@ def test_preguntar_dato_simple(client):
 
 
 def test_preguntar_comparacion(client):
-    """POST comparison question → 200 + tipo in ('comparacion', 'dato', 'sin_datos', 'error').
+    """POST comparison question → 200 + tipo='comparacion'.
 
-    With rules-only parsing the comparison type detection may or may not fire,
-    so we accept the broader set of valid tipos.
+    The rules parser reliably detects 'comparar X vs Y' as a comparison intent.
     """
     resp = client.post(
         "/api/preguntar",
-        json={"pregunta": "comparar Mitre vs Sarmiento 2023"},
+        json={"pregunta": "comparar pasajeros Mitre vs Sarmiento 2023"},
     )
     assert resp.status_code == 200
     body = resp.json()
-    assert body["tipo"] in ("comparacion", "dato", "sin_datos", "error")
+    assert body["tipo"] == "comparacion"
 
 
 def test_preguntar_ood(client):
-    """POST 'capital de Francia' → 200 + any valid tipo (OOD may not be detected
-    without an LLM, so we accept all valid TipoRespuesta values)."""
+    """POST 'capital de Francia' → 200 + tipo='ood'.
+
+    An out-of-domain question must be detected as OOD by the rules parser
+    (es_dominio=False) and returned with tipo='ood'.
+    """
     resp = client.post("/api/preguntar", json={"pregunta": "capital de Francia"})
     assert resp.status_code == 200
     body = resp.json()
-    assert body["tipo"] in ("dato", "comparacion", "ood", "sin_datos", "error")
+    assert body["tipo"] == "ood"
 
 
 # ---------------------------------------------------------------------------
@@ -150,11 +152,14 @@ def test_preguntar_fallback_si_responder_falla(client):
             raise Exception("Gemini falla")
         return stub_respuesta
 
-    with patch("web.app.responder", side_effect=side_effect):
+    with patch("web.app.responder", side_effect=side_effect) as mock_responder:
         resp = client.post("/api/preguntar", json={"pregunta": "pasajeros Mitre 2023"})
 
     assert resp.status_code == 200
-    assert call_count == 2
+    assert mock_responder.call_count == 2
+    second_call = mock_responder.call_args_list[1]
+    assert second_call.kwargs.get("sin_llm_nl") is True
+    assert second_call.kwargs.get("forzar_reglas") is True
 
 
 # ---------------------------------------------------------------------------
