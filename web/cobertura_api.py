@@ -1,10 +1,11 @@
 def obtener_cobertura() -> dict:
-    from motor.almacen import Almacen
-    desde, hasta = Almacen.cobertura("linea_mensual")
+    from motor import cobertura_tabla
+    desde, hasta = cobertura_tabla("linea_mensual")
     return {
         "tabla_default": "linea_mensual",
         "rango_general": {"desde": desde, "hasta": hasta},
         "casos_especiales": [
+            # Tren de la Costa data starts from 2015-05 — not in the general parquet range
             {
                 "linea": "Tren de la Costa",
                 "desde": "2015-05",
