@@ -5,3 +5,6 @@ google-genai
 pytest
 pandas
 pyarrow
+fastapi
+slowapi
+uvicorn
