@@ -26,6 +26,8 @@ function init() {
   // Wire up Enter key on input
   document.getElementById('input-pregunta').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
+      const btn = document.getElementById('btn-consultar');
+      if (btn.disabled) return;
       const pregunta = document.getElementById('input-pregunta').value.trim();
       if (pregunta) submitPregunta(pregunta);
     }
@@ -64,7 +66,10 @@ async function fetchEjemplos() {
 async function fetchCobertura() {
   try {
     const res = await fetch('/api/cobertura');
-    if (!res.ok) return;
+    if (!res.ok) {
+      document.getElementById('footer-cobertura').textContent = 'Cobertura de datos no disponible.';
+      return;
+    }
     const data = await res.json();
     const footer = document.getElementById('footer-cobertura');
     const rango = data.rango_general || {};
@@ -266,6 +271,8 @@ function renderSinDatos(textoNl, sugerencias, advertencias) {
   if (sugerencias.length > 0) {
     card.querySelectorAll('[data-sug]').forEach((el) => {
       el.addEventListener('click', () => {
+        const btn = document.getElementById('btn-consultar');
+        if (btn.disabled) return;
         const sug = el.dataset.sug;
         document.getElementById('input-pregunta').value = sug;
         submitPregunta(sug);
@@ -395,6 +402,8 @@ function renderHistorialChips() {
   historial.slice(0, HISTORIAL_DISPLAY).forEach((entry) => {
     const chip = buildChip(entry.pregunta, 'history');
     chip.addEventListener('click', () => {
+      const btn = document.getElementById('btn-consultar');
+      if (btn.disabled) return;
       document.getElementById('input-pregunta').value = entry.pregunta;
       submitPregunta(entry.pregunta);
     });
@@ -436,7 +445,7 @@ function setLoading(isLoading) {
 function buildChip(text, variant) {
   const el = document.createElement('button');
   el.type = 'button';
-  el.className = 'chip text-xs px-3 py-1.5 rounded-full border cursor-pointer select-none ' +
+  el.className = 'chip text-xs px-3 py-1.5 rounded-full border cursor-pointer select-none max-w-xs truncate overflow-hidden ' +
     (variant === 'history'
       ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white'
       : variant === 'suggestion'
