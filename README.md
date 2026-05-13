@@ -12,7 +12,7 @@ natural, sin necesidad de saber SQL ni manejar dashboards.
   - Cobertura temporal: 1993–2026.
 - **Etapa 2 — Capa semántica** ✅ completada (2026-05-11): parser de intención híbrido (reglas + Gemini) que traduce preguntas en español a objetos `Intent` estructurados.
 - **Etapa 3 — Motor de consulta del agente** ✅ completada (2026-05-12)
-- **Etapa 4 — Interfaz conversacional** (futuro).
+- ✅ **Etapa 4** — Interfaz web del agente _(2026-05-13)_
 
 ---
 
@@ -378,6 +378,63 @@ GEMINI_API_KEY="tu-clave" pytest tests/ -v -m gemini
 
 ---
 
+## Etapa 4 — Interfaz web
+
+Capa de interacción pública del agente: una aplicación web que expone el motor de consulta a través de una API REST y sirve un frontend HTML/JS vanilla con Tailwind CDN.
+
+### Objetivo
+
+Permitir a cualquier visitante consultar datos ferroviarios CNRT en español desde el navegador, sin instalar nada ni tocar código, usando el mismo motor de Etapa 3 como backend.
+
+### Arquitectura
+
+```
+Browser (HTML + JS vanilla + Tailwind CDN)
+        │  POST /api/preguntar {pregunta}
+        ▼
+FastAPI  web/app.py
+  ├── GET  /              → index.html
+  ├── GET  /healthz       → {"status":"ok"}
+  ├── GET  /api/ejemplos  → 6 preguntas curadas
+  ├── GET  /api/cobertura → rango de datos + Tren de la Costa
+  └── POST /api/preguntar → motor.responder() [rate limit 8/min]
+        │
+        ▼
+motor.responder(pregunta) → Respuesta
+```
+
+### Endpoints
+
+| Ruta | Método | Descripción |
+|---|---|---|
+| `/` | GET | Sirve la interfaz web (index.html) |
+| `/healthz` | GET | Health check para Render |
+| `/api/ejemplos` | GET | 6 preguntas de ejemplo |
+| `/api/cobertura` | GET | Rango temporal + casos especiales |
+| `/api/preguntar` | POST | Consulta al motor (rate limit: 8/min por IP) |
+
+### Cómo correr la web localmente
+
+```bash
+pip install -r requirements.txt
+uvicorn web.app:app --reload --port 8000
+# Abrir http://localhost:8000
+```
+
+**URL del deploy público:** _(pendiente de deploy en Render)_
+
+### Rate limit y fallback
+
+El endpoint `/api/preguntar` aplica un rate limit de 8 req/min por IP (via `slowapi`). Cuando Gemini no está disponible, el motor usa plantillas determinísticas como fallback offline transparente: la API responde igual, solo cambia `metadata.fuente_nl` de `"gemini"` a `"plantilla"`.
+
+### Cómo correr los tests (Etapa 4)
+
+```bash
+pytest tests/test_web_app.py tests/test_web_rate_limit.py -v
+```
+
+---
+
 ## Estructura de carpetas
 
 ```
@@ -410,6 +467,15 @@ motor/              # Etapa 3: motor de consulta
   plantillas.py     # templates determinísticos (modo offline)
   ood.py            # detección OOD + sugerencias canónicas
   orquestador.py    # pipeline responder()
+web/              # Etapa 4: interfaz web
+  app.py            # FastAPI: rutas y servidor
+  rate_limit.py     # slowapi limiter (8 req/min por IP)
+  ejemplos.py       # 6 preguntas curadas para /api/ejemplos
+  cobertura_api.py  # lógica de /api/cobertura
+  static/
+    index.html      # frontend (HTML + JS vanilla + Tailwind CDN)
+    styles.css      # estilos adicionales
+    app.js          # lógica cliente
 tests/
   # Etapa 2
   test_normalizacion.py
@@ -430,6 +496,11 @@ tests/
   test_cli.py
   test_motor_integracion.py
   gold_set_motor.json   # 16 casos: dato, comparacion, ood, sin_datos
+  # Etapa 4
+  test_web_app.py
+  test_web_rate_limit.py
+Dockerfile
+render.yaml
 README.md
 requirements.txt
 ```
