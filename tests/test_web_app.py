@@ -24,10 +24,10 @@ from web.app import app
 @pytest.fixture(autouse=True)
 def reset_rate_limit():
     """Reset slowapi's in-memory storage before and after each test."""
-    from web.rate_limit import limiter
-    limiter._storage.reset()
+    from web.rate_limit import reset_limiter
+    reset_limiter()
     yield
-    limiter._storage.reset()  # teardown: clean up after each test
+    reset_limiter()
 
 
 @pytest.fixture(scope="module")
