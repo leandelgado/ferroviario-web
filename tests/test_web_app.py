@@ -59,13 +59,13 @@ def test_healthz(client):
     assert resp.json() == {"status": "ok"}
 
 
-def test_ejemplos_devuelve_6(client):
-    """GET /api/ejemplos must return 200 and exactly 6 string elements."""
+def test_ejemplos_devuelve_lista_no_vacia(client):
+    """GET /api/ejemplos must return 200 and a non-empty list of strings."""
     resp = client.get("/api/ejemplos")
     assert resp.status_code == 200
     data = resp.json()
     assert isinstance(data, list)
-    assert len(data) == 6
+    assert len(data) >= 6
     for item in data:
         assert isinstance(item, str)
 

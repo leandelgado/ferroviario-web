@@ -81,6 +81,10 @@ class Intent(BaseModel):
     # Rangos temporales explícitos (sólo para comparacion_periodos)
     rangos_temporales: list[RangoTemporal] = Field(default_factory=list)
 
+    # Etapa 5: agrupamiento temporal — None (default) preserva el comportamiento
+    # original (agregación única). "año" activa el ejecutor agrupado por año.
+    grupo_por: Literal["año"] | None = None
+
     @model_validator(mode="after")
     def validar_coherencia_tabla_filtros(self) -> "Intent":
         """

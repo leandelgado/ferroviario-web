@@ -5,4 +5,6 @@ EJEMPLOS = [
     "¿Cómo varió la recaudación del Sarmiento el último año?",
     "Cancelaciones en Belgrano Norte entre 2018 y 2020",
     "Pasajeros del Tren de la Costa en 2020",
+    "Pasajeros por año en el Urquiza entre 2018 y 2020",
+    "Cancelaciones anuales del Sarmiento desde 2020",
 ]

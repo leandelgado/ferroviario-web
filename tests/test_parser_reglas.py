@@ -106,3 +106,29 @@ def test_origen_is_reglas():
     """Rule-based parse always returns origen='reglas'."""
     result = parse("¿Cuántos pasajeros transportó la línea Mitre en 2023?")
     assert result.intent.origen == "reglas"
+
+
+# ---------------------------------------------------------------------------
+# Etapa 5: grupo_por (agrupamiento por año)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("pregunta,exp_grupo", [
+    ("Pasajeros por año en el Urquiza entre 2000 y 2005", "año"),
+    ("Cuántos trenes corrieron anualmente en el Mitre desde 2018", "año"),
+    ("Cancelaciones anuales del Sarmiento desde 2020", "año"),
+    ("Pasajeros por cada año del Roca entre 2018 y 2022", "año"),
+    # Control negativo — sin keyword de agrupamiento
+    ("Pasajeros del Mitre en 2023", None),
+    ("Recaudación total de la red en 2022", None),
+])
+def test_parse_detecta_grupo_por(pregunta, exp_grupo):
+    result = parse(pregunta)
+    assert result.intent.grupo_por == exp_grupo
+
+
+def test_grupo_por_sin_rango_genera_advertencia():
+    """grupo_por='año' sin rango_temporal debe agregar una advertencia."""
+    result = parse("Pasajeros por año en el Urquiza")
+    assert result.intent.grupo_por == "año"
+    assert result.intent.rango_temporal is None
+    assert any("rango temporal" in a.lower() for a in result.intent.advertencias)
