@@ -46,6 +46,10 @@ _GRUPO_ANIO_KEYWORDS = (
     "cada anio",
     "anual",
     "anualmente",
+    "ano a ano",
+    "anio a anio",
+    "ano por ano",
+    "ano tras ano",
 )
 
 # ---------------------------------------------------------------------------

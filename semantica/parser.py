@@ -117,13 +117,20 @@ def parse(
         )
         return result_reglas.intent
 
-    # Confidence is low or metric missing → fall back to LLM and merge
+    # Confidence is low or metric missing → fall back to LLM and merge.
+    # If the LLM call fails (quota, network), fall back to the rules result so
+    # that OOD queries (es_dominio=False) still reach _ood_respuesta instead of
+    # returning tipo='error'.
     _logger.debug(
         "Parser de reglas: confianza=%.3f, metrica=%r → requiere_llm=True",
         result_reglas.intent.confianza,
         result_reglas.intent.metrica,
     )
-    intent_llm = parse_llm(pregunta, hint=result_reglas.intent, backend=llm_backend)
+    try:
+        intent_llm = parse_llm(pregunta, hint=result_reglas.intent, backend=llm_backend)
+    except Exception as exc:
+        _logger.warning("LLM parser falló, usando resultado de reglas: %s", exc)
+        return result_reglas.intent
     merged = _merge(result_reglas.intent, intent_llm)
 
     _logger.debug(

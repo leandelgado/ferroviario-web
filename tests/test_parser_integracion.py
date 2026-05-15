@@ -107,3 +107,39 @@ def test_forzar_llm_stub_returns_intent_instance():
     intent = parse("cualquier cosa", forzar_llm=True, llm_backend=StubBackend())
     assert isinstance(intent, Intent)
     assert intent.origen == "llm"
+
+
+# ---------------------------------------------------------------------------
+# 8. OOD queries skip the LLM (regression: Gemini quota errors caused tipo='error')
+# ---------------------------------------------------------------------------
+
+def test_ood_query_returns_false_es_dominio():
+    """OOD queries must always yield es_dominio=False regardless of LLM result.
+
+    The hybrid parser's _merge() preserves es_dominio=False when rules flagged it.
+    If the LLM fails, the rules result (also es_dominio=False) is returned.
+    """
+    intent = parse("capital de Francia", llm_backend=StubBackend())
+    assert intent.es_dominio is False
+
+
+def test_ood_query_without_llm_backend_does_not_raise():
+    """OOD detection must work even when no LLM backend is available."""
+    intent = parse("cuál es la receta del asado", llm_backend=StubBackend())
+    assert intent.es_dominio is False
+
+
+def test_llm_failure_falls_back_to_rules():
+    """When the LLM raises, the hybrid parser must return the rules-based result.
+
+    This prevents Gemini quota/network errors from propagating as tipo='error'
+    for queries (including OOD) that the rules parser already handled.
+    """
+    class FailingBackend:
+        def parse(self, pregunta, hint=None):
+            raise RuntimeError("quota exhausted")
+
+    # OOD query: rules say es_dominio=False → fall back to that on LLM failure
+    intent = parse("capital de Francia", llm_backend=FailingBackend())
+    assert intent.es_dominio is False
+    assert intent.origen == "reglas"

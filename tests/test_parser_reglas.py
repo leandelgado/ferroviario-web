@@ -117,6 +117,11 @@ def test_origen_is_reglas():
     ("Cuántos trenes corrieron anualmente en el Mitre desde 2018", "año"),
     ("Cancelaciones anuales del Sarmiento desde 2020", "año"),
     ("Pasajeros por cada año del Roca entre 2018 y 2022", "año"),
+    # Variantes con "año a año" — caso reportado como bug
+    ("Como fue la cantidad de trenes cancelados en urquiza entre 2015 y 2025 año a año", "año"),
+    ("Trenes cancelados en urquiza año a año entre 2015 y 2025", "año"),
+    ("Pasajeros año por año en el Mitre desde 2018", "año"),
+    ("Cancelaciones año tras año del Sarmiento desde 2020", "año"),
     # Control negativo — sin keyword de agrupamiento
     ("Pasajeros del Mitre en 2023", None),
     ("Recaudación total de la red en 2022", None),
