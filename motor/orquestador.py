@@ -9,7 +9,10 @@ It never raises — all exceptions are caught and converted to error responses.
 
 from __future__ import annotations
 
+import json
+import re
 import time
+import unicodedata
 
 from motor.respuesta import Respuesta, Metadata, TipoRespuesta
 from motor.almacen import Almacen
@@ -130,6 +133,7 @@ def responder(
             cobertura_hasta=cob_hasta,
             fuente_nl=fuente_nl,
             tiempo_ms=elapsed_ms,
+            intent_fallback=_es_intent_fallback(intent, pregunta),
         )
 
         dato = dato_o_comp if tipo == "dato" else None
@@ -153,6 +157,57 @@ def responder(
 # Private helpers
 # ---------------------------------------------------------------------------
 
+def _normalizar(s: str) -> str:
+    s = s.lower()
+    s = "".join(
+        c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn"
+    )
+    return s
+
+
+def _es_intent_fallback(intent, pregunta: str) -> bool:
+    """True when parser confidence is low and the chosen metric is not mentioned
+    in the question — signals that intent extraction effectively fell back to a
+    default (StubBackend, degraded Gemini, etc.)."""
+    if getattr(intent, "confianza", 1.0) > 0.5:
+        return False
+
+    metrica = getattr(intent, "metrica", "") or ""
+    if not metrica:
+        return True
+
+    try:
+        df = Almacen.obtener("dim_indicadores")
+        row = df[df["campo"] == metrica]
+        if row.empty:
+            return True
+        r = row.iloc[0]
+        keywords: list[str] = []
+        etiqueta = r.get("etiqueta_humana")
+        if etiqueta:
+            keywords.append(str(etiqueta))
+        sinonimos = r.get("sinonimos")
+        if isinstance(sinonimos, str):
+            try:
+                sinonimos = json.loads(sinonimos)
+            except Exception:
+                sinonimos = []
+        if sinonimos is not None:
+            try:
+                keywords.extend(str(x) for x in sinonimos)
+            except TypeError:
+                pass
+    except Exception:
+        return False
+
+    norm_pregunta = _normalizar(pregunta)
+    for kw in keywords:
+        for token in re.findall(r"\w+", _normalizar(kw)):
+            if len(token) >= 4 and token in norm_pregunta:
+                return False
+    return True
+
+
 def _ood_respuesta(pregunta: str, intent, t0: float, sin_llm_nl: bool) -> Respuesta:
     """Build an OOD (out-of-domain) Respuesta."""
     sugerencias = construir_sugerencias()
@@ -165,7 +220,12 @@ def _ood_respuesta(pregunta: str, intent, t0: float, sin_llm_nl: bool) -> Respue
         texto_nl=texto_nl,
         intent=intent,
         sugerencias=sugerencias,
-        metadata=Metadata(tabla="", fuente_nl=fuente_nl, tiempo_ms=elapsed),
+        metadata=Metadata(
+            tabla="",
+            fuente_nl=fuente_nl,
+            tiempo_ms=elapsed,
+            intent_fallback=_es_intent_fallback(intent, pregunta),
+        ),
     )
 
 
@@ -188,6 +248,7 @@ def _sin_datos_respuesta(
             tabla=getattr(intent, "tabla", ""),
             fuente_nl=fuente_nl,
             tiempo_ms=elapsed,
+            intent_fallback=_es_intent_fallback(intent, pregunta),
         ),
     )
 

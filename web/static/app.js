@@ -130,15 +130,12 @@ function renderRespuesta(respuesta) {
   const tipo = respuesta.tipo || 'error';
   const textoNl = respuesta.texto_nl || '';
   const advertencias = respuesta.advertencias || [];
-  const fuente_nl = (respuesta.metadata || {}).fuente_nl || '';
+  const metadata = respuesta.metadata || {};
+  const intent = respuesta.intent || {};
+  const fuente_nl = metadata.fuente_nl || '';
+  const intentFallback = metadata.intent_fallback === true;
 
-  // Show/hide offline banner
-  const offlineBanner = document.getElementById('offline-banner');
-  if (fuente_nl && fuente_nl !== 'gemini') {
-    offlineBanner.classList.remove('hidden');
-  } else {
-    offlineBanner.classList.add('hidden');
-  }
+  renderProcedencia(intent, fuente_nl, intentFallback);
 
   // Render advertencias
   renderAdvertencias(advertencias);
@@ -293,9 +290,26 @@ function renderError(textoNl) {
     </div>
   `;
   document.getElementById('response-area').classList.remove('hidden');
-  document.getElementById('offline-banner').classList.add('hidden');
+  document.getElementById('procedencia').classList.add('hidden');
   renderAdvertencias([]);
   renderDetalleTecnico({}, {});
+}
+
+// ──────────────────────────────────────────────────────────────
+// Render: provenance lines (intent + NL source)
+// ──────────────────────────────────────────────────────────────
+function renderProcedencia(intent, fuente_nl, intentFallback) {
+  const container = document.getElementById('procedencia');
+  const intentEl = document.getElementById('proc-intent');
+  const nlEl = document.getElementById('proc-nl');
+
+  const origen = intent.origen || 'reglas';
+  const intentLabel = (origen === 'reglas' || intentFallback) ? 'Plantilla' : 'LLM';
+  const nlLabel = fuente_nl === 'gemini' ? 'LLM' : 'Plantilla';
+
+  intentEl.textContent = intentLabel;
+  nlEl.textContent = nlLabel;
+  container.classList.remove('hidden');
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -445,12 +459,17 @@ function setLoading(isLoading) {
 function buildChip(text, variant) {
   const el = document.createElement('button');
   el.type = 'button';
-  el.className = 'chip text-xs px-3 py-1.5 rounded-full border cursor-pointer select-none max-w-xs truncate overflow-hidden ' +
-    (variant === 'history'
-      ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white'
-      : variant === 'suggestion'
-      ? 'bg-blue-900 border-blue-700 text-blue-200 hover:bg-blue-800 hover:text-white'
-      : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white');
+
+  if (variant === 'history') {
+    el.className = 'chip text-xs px-3 py-2 rounded-lg border cursor-pointer select-none text-left w-full ' +
+      'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white transition';
+  } else {
+    el.className = 'chip text-xs px-3 py-1.5 rounded-full border cursor-pointer select-none max-w-xs truncate overflow-hidden ' +
+      (variant === 'suggestion'
+        ? 'bg-blue-900 border-blue-700 text-blue-200 hover:bg-blue-800 hover:text-white'
+        : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white');
+  }
+
   el.textContent = text;
   return el;
 }

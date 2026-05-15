@@ -30,6 +30,7 @@ class Metadata(BaseModel):
     cobertura_hasta: str = ""  # "YYYY-MM"
     fuente_nl: Literal["gemini", "plantilla", "ninguna"] = "ninguna"
     tiempo_ms: float = 0.0
+    intent_fallback: bool = False
 
 
 # ---------------------------------------------------------------------------
