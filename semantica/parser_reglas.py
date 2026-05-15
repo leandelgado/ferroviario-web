@@ -36,6 +36,18 @@ _FERROVIARIO_KEYWORDS = re.compile(
 
 _ANIO_RE = re.compile(r'\b(?:19|20)\d{2}\b')
 
+# Frases (ya normalizadas — sin tildes) que indican agrupar por año.
+_GRUPO_ANIO_KEYWORDS = (
+    "por ano",
+    "por anio",
+    "por cada ano",
+    "por cada anio",
+    "cada ano",
+    "cada anio",
+    "anual",
+    "anualmente",
+)
+
 # ---------------------------------------------------------------------------
 # Lazy singleton
 # ---------------------------------------------------------------------------
@@ -240,6 +252,18 @@ def _infer_agregacion(
         return "mean", advertencias
 
 
+def _detectar_grupo_por(texto_norm: str) -> Literal["año"] | None:
+    """Detect temporal grouping keywords. Returns "año" or None.
+
+    Operates on text already passed through normalizar() — accents stripped,
+    so we match the unaccented forms ("ano", "anio", "anual").
+    """
+    for kw in _GRUPO_ANIO_KEYWORDS:
+        if kw in texto_norm:
+            return "año"
+    return None
+
+
 def _detectar_tipo(
     texto_norm: str,
     lineas: list[str],
@@ -369,6 +393,14 @@ def parse(pregunta: str) -> ParseResult:
     # Step 9: Detect query type (comparacion_lineas / comparacion_periodos / simple)
     tipo = _detectar_tipo(texto_norm, filtros_linea, rango_temporal)
 
+    # Step 9b: Detect temporal grouping (Etapa 5)
+    grupo_por = _detectar_grupo_por(texto_norm)
+    if grupo_por == "año" and rango_temporal is None:
+        advertencias.append(
+            "Se solicitó agrupar por año pero no se detectó un rango temporal; "
+            "se usará toda la cobertura disponible."
+        )
+
     # Step 10: Conservative out-of-domain detection
     es_dominio = _es_dominio(texto_norm, metrica, filtros_linea)
     if not es_dominio:
@@ -388,6 +420,7 @@ def parse(pregunta: str) -> ParseResult:
         advertencias=advertencias,
         es_dominio=es_dominio,
         tipo=tipo,
+        grupo_por=grupo_por,
     )
 
     return ParseResult(intent=intent, requiere_llm=requiere_llm)

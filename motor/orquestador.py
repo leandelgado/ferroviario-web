@@ -18,6 +18,7 @@ from motor.respuesta import Respuesta, Metadata, TipoRespuesta
 from motor.almacen import Almacen
 from motor.cobertura import validar_temporal, validar_lineas, validar_metrica_granularidad
 from motor.ejecutor import ejecutar_simple
+from motor.ejecutor_agrupado import ejecutar_agrupado
 from motor.ejecutor_comparacion import ejecutar_comparacion
 from motor.generador_nl import generar_nl
 from motor.ood import es_probable_ood, construir_sugerencias
@@ -98,9 +99,14 @@ def responder(
         if resultado_granularidad.mensaje:
             advertencias.append(resultado_granularidad.mensaje)
 
-        if intent.tipo in ("comparacion_lineas", "comparacion_periodos"):
-            dato_o_comp, adv = ejecutar_comparacion(intent, Almacen)
+        # Si el parser detectó agrupamiento por año, éste gana sobre el tipo
+        # de comparación inferido por keywords ("vs", "comparar", ...).
+        if getattr(intent, "grupo_por", None) == "año":
+            dato_o_comp, adv = ejecutar_agrupado(intent, Almacen)
             tipo: TipoRespuesta = "comparacion"
+        elif intent.tipo in ("comparacion_lineas", "comparacion_periodos"):
+            dato_o_comp, adv = ejecutar_comparacion(intent, Almacen)
+            tipo = "comparacion"
         else:
             dato_o_comp, adv = ejecutar_simple(intent, Almacen)
             tipo = "dato"

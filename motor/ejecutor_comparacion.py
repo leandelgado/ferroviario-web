@@ -16,7 +16,7 @@ import pandas as pd
 
 from motor.almacen import Almacen
 from motor.respuesta import Comparacion, ItemComparacion
-from motor.ejecutor import _FORMULAS_RATIOS
+from motor._ratios import FORMULAS_RATIOS as _FORMULAS_RATIOS
 
 
 # ---------------------------------------------------------------------------

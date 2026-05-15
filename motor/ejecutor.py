@@ -13,20 +13,7 @@ import pandas as pd
 
 from motor.almacen import Almacen
 from motor.respuesta import Dato
-
-# ---------------------------------------------------------------------------
-# Ratio metric formulas
-# ---------------------------------------------------------------------------
-# For these metrics, we must NOT use mean() — instead recalculate from the
-# underlying numerator and denominator columns.
-
-_FORMULAS_RATIOS: dict[str, tuple[str, str]] = {
-    "regularidad_absoluta": ("trenes_puntuales", "trenes_programados"),
-    "regularidad_relativa": ("trenes_puntuales", "trenes_corridos"),
-    "cumplimiento_programa": ("trenes_corridos", "trenes_programados"),
-    "tasa_cancelacion": ("trenes_cancelados", "trenes_programados"),
-    "tarifa_media_pesos": ("recaudacion_pesos", "pax_pagos"),
-}
+from motor._ratios import FORMULAS_RATIOS as _FORMULAS_RATIOS
 
 
 # ---------------------------------------------------------------------------

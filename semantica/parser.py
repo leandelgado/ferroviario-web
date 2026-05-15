@@ -51,12 +51,17 @@ def _merge(intent_reglas: Intent, intent_llm: Intent) -> Intent:
     # The LLM defaults to es_dominio=True and would otherwise silently mask OOD.
     es_dominio = intent_llm.es_dominio and intent_reglas.es_dominio
 
+    # grupo_por is detected only by the rules parser (keyword-based, deterministic);
+    # the LLM schema doesn't include it. Preserve the rules signal when LLM is None.
+    grupo_por = intent_llm.grupo_por or intent_reglas.grupo_por
+
     return intent_llm.model_copy(
         update={
             "origen": "hibrido",
             "advertencias": combined_advertencias,
             "confianza": confianza,
             "es_dominio": es_dominio,
+            "grupo_por": grupo_por,
         }
     )
 

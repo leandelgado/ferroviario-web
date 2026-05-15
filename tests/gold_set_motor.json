@@ -14,5 +14,7 @@
   {"pregunta": "Información del Mitre en 2050", "tipo_esperado": "sin_datos"},
   {"pregunta": "Comparar puntualidad Mitre vs Sarmiento 2023", "tipo_esperado": "comparacion"},
   {"pregunta": "Comparar pasajeros Mitre vs Roca 2022", "tipo_esperado": "comparacion"},
-  {"pregunta": "Qué pasó con los pasajeros en 2022 vs 2021", "tipo_esperado": "comparacion"}
+  {"pregunta": "Qué pasó con los pasajeros en 2022 vs 2021", "tipo_esperado": "comparacion"},
+  {"pregunta": "Pasajeros por año en el Urquiza entre 2018 y 2020", "tipo_esperado": "comparacion"},
+  {"pregunta": "Cancelaciones anuales del Sarmiento entre 2019 y 2021", "tipo_esperado": "comparacion"}
 ]

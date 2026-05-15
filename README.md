@@ -13,6 +13,7 @@ natural, sin necesidad de saber SQL ni manejar dashboards.
 - **Etapa 2 — Capa semántica** ✅ completada (2026-05-11): parser de intención híbrido (reglas + Gemini) que traduce preguntas en español a objetos `Intent` estructurados.
 - **Etapa 3 — Motor de consulta del agente** ✅ completada (2026-05-12)
 - ✅ **Etapa 4** — Interfaz web del agente _(2026-05-13)_
+- ✅ **Etapa 5** — Agrupamiento temporal por año _(2026-05-15)_
 
 ---
 
@@ -163,6 +164,8 @@ class Intent(BaseModel):
     es_dominio: bool = True                   # False si la pregunta es OOD
     tipo: Literal["simple","comparacion_lineas","comparacion_periodos"] = "simple"
     rangos_temporales: list[RangoTemporal] = []  # solo en comparacion_periodos
+    # Campo añadido en Etapa 5:
+    grupo_por: Literal["año"] | None = None   # activa el ejecutor agrupado
 ```
 
 ### Evaluación
@@ -395,7 +398,7 @@ Browser (HTML + JS vanilla + Tailwind CDN)
 FastAPI  web/app.py
   ├── GET  /              → index.html
   ├── GET  /healthz       → {"status":"ok"}
-  ├── GET  /api/ejemplos  → 6 preguntas curadas
+  ├── GET  /api/ejemplos  → preguntas curadas (chips)
   ├── GET  /api/cobertura → rango de datos + Tren de la Costa
   └── POST /api/preguntar → motor.responder() [rate limit 8/min]
         │
@@ -409,7 +412,7 @@ motor.responder(pregunta) → Respuesta
 |---|---|---|
 | `/` | GET | Sirve la interfaz web (index.html) |
 | `/healthz` | GET | Health check para Render |
-| `/api/ejemplos` | GET | 6 preguntas de ejemplo |
+| `/api/ejemplos` | GET | Preguntas de ejemplo (incluye chips de agrupamiento anual) |
 | `/api/cobertura` | GET | Rango temporal + casos especiales |
 | `/api/preguntar` | POST | Consulta al motor (rate limit: 8/min por IP) |
 
@@ -431,6 +434,60 @@ El endpoint `/api/preguntar` aplica un rate limit de 8 req/min por IP (via `slow
 
 ```bash
 pytest tests/test_web_app.py tests/test_web_rate_limit.py -v
+```
+
+---
+
+## Etapa 5 — Agrupamiento temporal por año
+
+Permite descomponer una métrica en una serie anual sin tener que escribir varias
+preguntas. Una consulta como _"¿Cuántos pasajeros transportó el Urquiza entre
+2018 y 2020?"_ devuelve un único agregado; reformulada como _"Pasajeros **por
+año** en el Urquiza entre 2018 y 2020"_ devuelve 3 valores: uno por año.
+
+### Activación
+
+El parser de reglas detecta las siguientes formas (todas tras normalizar
+acentos):
+
+`por año`, `por anio`, `por cada año`, `cada año`, `anual`, `anualmente`.
+
+Cuando alguna aparece en la pregunta, el `Intent` toma `grupo_por="año"` y el
+orquestador enruta al `motor.ejecutor_agrupado` en lugar del `ejecutor_simple`
+o `ejecutor_comparacion`.
+
+### Comportamiento
+
+- **Una sola línea:** un ítem por año (`"2018"`, `"2019"`, ...).
+- **Multi-línea:** matriz línea × año (`"Mitre 2018"`, `"Mitre 2019"`,
+  `"Sarmiento 2018"`, ...). Si la cobertura no es pareja entre líneas se agrega
+  una advertencia.
+- **Ratios** (`regularidad_*`, `tasa_cancelacion`, `cumplimiento_programa`,
+  `tarifa_media_pesos`): cada año se **recalcula** desde sus componentes
+  (numerador y denominador), nunca se promedian los ratios mensuales.
+- **Sin rango temporal:** se usa toda la cobertura disponible y se agrega una
+  advertencia.
+- **Render UI:** se reutiliza `renderComparacion` (barras horizontales).
+  La respuesta es `tipo="comparacion"` con `Comparacion(eje="periodo", items=[...])`.
+
+### Ejemplos
+
+```bash
+python -m motor "Pasajeros por año en el Urquiza entre 2018 y 2020"
+# → 2018: 28.9M | 2019: 26.6M | 2020: 8.5M
+
+python -m motor "Cancelaciones del Mitre y Sarmiento por año entre 2018 y 2020"
+# → Mitre 2018: 15.1K | Mitre 2019: 12.9K | Mitre 2020: 6.9K
+#   Sarmiento 2018: 5.0K | Sarmiento 2019: 6.4K | Sarmiento 2020: 16.0K
+
+python -m motor "Cancelaciones anuales del Sarmiento desde 2020"
+```
+
+### Cómo correr los tests (Etapa 5)
+
+```bash
+pytest tests/test_ejecutor_agrupado.py -v
+pytest tests/test_parser_reglas.py::test_parse_detecta_grupo_por -v
 ```
 
 ---
@@ -463,6 +520,8 @@ motor/              # Etapa 3: motor de consulta
   cobertura.py      # validadores de cobertura temporal
   ejecutor.py       # ejecutar_simple() con recálculo de ratios
   ejecutor_comparacion.py  # ejecutar_comparacion()
+  ejecutor_agrupado.py     # ejecutar_agrupado() — agrupa por año (Etapa 5)
+  _ratios.py        # FORMULAS_RATIOS compartido entre ejecutores
   generador_nl.py   # Gemini grounded + fallback plantillas
   plantillas.py     # templates determinísticos (modo offline)
   ood.py            # detección OOD + sugerencias canónicas
@@ -495,7 +554,8 @@ tests/
   test_orquestador.py
   test_cli.py
   test_motor_integracion.py
-  gold_set_motor.json   # 16 casos: dato, comparacion, ood, sin_datos
+  test_ejecutor_agrupado.py  # Etapa 5: agrupamiento por año
+  gold_set_motor.json   # casos: dato, comparacion, ood, sin_datos, agrupado
   # Etapa 4
   test_web_app.py
   test_web_rate_limit.py
