@@ -68,7 +68,24 @@ async def healthz():
 @app.get("/api/debug-env")
 async def debug_env():
     key = os.environ.get("GEMINI_API_KEY", "")
-    return {"gemini_key_set": bool(key), "gemini_key_len": len(key), "google_key_set": bool(os.environ.get("GOOGLE_API_KEY", ""))}
+    result = {"gemini_key_set": bool(key), "gemini_key_len": len(key)}
+    if key:
+        try:
+            from google import genai
+            from google.genai import types
+            client = genai.Client(api_key=key, http_options=types.HttpOptions(timeout=5_000))
+            r = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents="Respondé solo 'ok'",
+                config=types.GenerateContentConfig(
+                    temperature=0.1, max_output_tokens=10,
+                    thinking_config=types.ThinkingConfig(thinking_budget=0),
+                ),
+            )
+            result["gemini_test"] = "ok" if r.text else "empty"
+        except Exception as e:
+            result["gemini_error"] = str(e)
+    return result
 
 
 @app.get("/api/ejemplos")
