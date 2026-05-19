@@ -1,4 +1,5 @@
 import logging
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -62,6 +63,12 @@ async def root():
 @app.get("/healthz")
 async def healthz():
     return {"status": "ok"}
+
+
+@app.get("/api/debug-env")
+async def debug_env():
+    key = os.environ.get("GEMINI_API_KEY", "")
+    return {"gemini_key_set": bool(key), "gemini_key_len": len(key), "google_key_set": bool(os.environ.get("GOOGLE_API_KEY", ""))}
 
 
 @app.get("/api/ejemplos")
