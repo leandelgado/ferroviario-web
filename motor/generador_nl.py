@@ -207,8 +207,9 @@ def _llamar_gemini(
         config=types.GenerateContentConfig(
             system_instruction=_SYSTEM_PROMPT,
             temperature=0.1,
-            max_output_tokens=512,
+            max_output_tokens=1024,
             response_mime_type="text/plain",
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
         ),
     )
     texto = (response.text or "").strip()

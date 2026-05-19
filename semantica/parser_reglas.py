@@ -137,9 +137,11 @@ def _extract_lineas(texto_norm: str, voc: Vocabulario) -> tuple[list[str], float
     aliases = voc.aliases_linea
     found: dict[str, str] = {}  # canonical → method ("exact"/"fuzzy")
 
-    # Exact match: check if any alias key appears as a substring in the text
+    # Exact match: check if any alias key appears as a whole word/phrase in the text.
+    # Word-boundary check prevents short aliases like "bs" (Belgrano Sur) from
+    # matching inside unrelated words, e.g. "absoluta" → "a[bs]oluta".
     for alias_norm, canonical in aliases.items():
-        if alias_norm in texto_norm:
+        if re.search(r'\b' + re.escape(alias_norm) + r'\b', texto_norm):
             found[canonical] = "exact"
 
     # Fuzzy match over the full alias dictionary using each word window

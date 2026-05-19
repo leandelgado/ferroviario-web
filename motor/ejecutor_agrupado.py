@@ -166,11 +166,9 @@ def ejecutar_agrupado(intent, almacen) -> tuple[Comparacion, list[str]]:
                 "Cobertura desigual entre líneas: alguna(s) tienen más años de datos que otra(s)."
             )
 
-    ranking = _ranking(items, direccion_mejor)
-
     return Comparacion(
         eje="periodo",
         items=items,
         diferencias=[],
-        ranking=ranking,
+        ranking=[],  # chronological order from items; ranking by value not applicable here
     ), advertencias

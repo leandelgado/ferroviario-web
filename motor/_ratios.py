@@ -14,4 +14,5 @@ FORMULAS_RATIOS: dict[str, tuple[str, str]] = {
     "cumplimiento_programa": ("trenes_corridos", "trenes_programados"),
     "tasa_cancelacion": ("trenes_cancelados", "trenes_programados"),
     "tarifa_media_pesos": ("recaudacion_pesos", "pax_pagos"),
+    "ocupacion_media": ("pax_km", "coches_km"),
 }

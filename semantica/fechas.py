@@ -68,6 +68,7 @@ def extraer_fecha(texto: str) -> Optional[RangoTemporal]:
         r'de\s+(\d{4})\s+a\s+(\d{4})',
         r'desde\s+(\d{4})\s+hasta\s+(\d{4})',
         r'(\d{4})\s*-\s*(\d{4})',  # Hyphen with optional spaces
+        r'(\d{4})\s+a\s+(\d{4})',  # "2015 a 2025" without leading "de"
     ]
     for pattern in range_patterns:
         match = re.search(pattern, texto)
