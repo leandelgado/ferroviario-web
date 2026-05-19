@@ -4,6 +4,6 @@ services:
     env: docker
     dockerfilePath: ./Dockerfile
     envVars:
-      - key: GEMINI_API_KEY
+      - key: GROQ_API_KEY
         sync: false
     healthCheckPath: /healthz

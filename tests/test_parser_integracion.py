@@ -1,7 +1,7 @@
 """
 End-to-end integration tests for semantica.parse() — the hybrid orchestrator.
 
-LLM paths use StubBackend so tests do not require GEMINI_API_KEY.
+LLM paths use StubBackend so tests do not require GROQ_API_KEY.
 All tests are deterministic (no real LLM calls).
 """
 
@@ -110,7 +110,7 @@ def test_forzar_llm_stub_returns_intent_instance():
 
 
 # ---------------------------------------------------------------------------
-# 8. OOD queries skip the LLM (regression: Gemini quota errors caused tipo='error')
+# 8. OOD queries skip the LLM (regression: Groq quota errors caused tipo='error')
 # ---------------------------------------------------------------------------
 
 def test_ood_query_returns_false_es_dominio():
@@ -132,7 +132,7 @@ def test_ood_query_without_llm_backend_does_not_raise():
 def test_llm_failure_falls_back_to_rules():
     """When the LLM raises, the hybrid parser must return the rules-based result.
 
-    This prevents Gemini quota/network errors from propagating as tipo='error'
+    This prevents Groq quota/network errors from propagating as tipo='error'
     for queries (including OOD) that the rules parser already handled.
     """
     class FailingBackend:

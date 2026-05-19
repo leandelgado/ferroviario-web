@@ -1,7 +1,7 @@
 """
 Deterministic f-string templates for all 5 response types.
 
-Used as fallback when Gemini is unavailable. All output is plain Spanish text
+Used as fallback when Groq is unavailable. All output is plain Spanish text
 (rioplatense informal). No markdown, no bullets, no emojis.
 """
 

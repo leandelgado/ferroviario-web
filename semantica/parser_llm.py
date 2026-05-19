@@ -2,7 +2,7 @@
 LLM-based fallback intent parser for the railway conversational agent.
 
 Provides an abstract LLMBackend interface and two concrete implementations:
-  - GeminiBackend: uses Google Gemini (google-genai SDK) with structured output
+  - GroqBackend: uses Groq (groq SDK, llama-3.3-70b-versatile) with structured output
   - StubBackend: returns a hardcoded Intent for testing without an API key
 
 Public API
@@ -44,7 +44,7 @@ class StubBackend(LLMBackend):
     """Returns a hardcoded Intent with origen='llm' and confianza=0.5.
 
     Use this in unit tests to exercise parser_llm without hitting the
-    Gemini API.
+    Groq API.
     """
 
     def parse(self, pregunta: str, hint: Optional[Intent] = None) -> Intent:  # noqa: ARG002
@@ -282,50 +282,48 @@ def _build_user_message(pregunta: str, hint: Optional[Intent]) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Gemini backend
+# Groq backend
 # ---------------------------------------------------------------------------
 
-class GeminiBackend(LLMBackend):
-    """Calls Google Gemini with structured output to parse railway intents.
+class GroqBackend(LLMBackend):
+    """Calls Groq with structured output to parse railway intents.
 
-    Uses the new ``google-genai`` SDK (package name ``google-genai``, import
-    path ``google.genai``).
+    Uses the ``groq`` SDK (OpenAI-compatible interface).
 
-    Primary model: ``gemini-2.5-flash``.
-    To switch to pro, change the MODEL constant to "gemini-2.5-pro".
+    Primary model: ``llama-3.3-70b-versatile``.
 
-    API key is read from the ``GEMINI_API_KEY`` env var, falling back to
-    ``GOOGLE_API_KEY``. A ``RuntimeError`` is raised if neither is set.
+    API key is read from the ``GROQ_API_KEY`` env var.
+    A ``RuntimeError`` is raised if it is not set.
     """
 
-    PRIMARY_MODEL = "gemini-2.5-flash"
+    PRIMARY_MODEL = "llama-3.3-70b-versatile"
 
     def __init__(self, model: Optional[str] = None) -> None:
-        """Initialise the Gemini client.
+        """Initialise the Groq client.
 
         Args:
             model: Override the model name. Defaults to PRIMARY_MODEL.
 
         Raises:
-            RuntimeError: If neither GEMINI_API_KEY nor GOOGLE_API_KEY is set.
+            RuntimeError: If GROQ_API_KEY is not set.
         """
-        api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+        api_key = os.environ.get("GROQ_API_KEY")
         if not api_key:
             raise RuntimeError(
-                "No se encontró la clave de API de Gemini. "
-                "Configura la variable de entorno GEMINI_API_KEY (o GOOGLE_API_KEY)."
+                "No se encontró la clave de API de Groq. "
+                "Configura la variable de entorno GROQ_API_KEY."
             )
 
-        from google import genai  # local import to keep module importable without SDK
+        from groq import Groq  # local import to keep module importable without SDK
 
-        self._client = genai.Client(api_key=api_key)
+        self._client = Groq(api_key=api_key)
         self._model = model or self.PRIMARY_MODEL
         self._system_prompt = _build_system_prompt()
 
-        _logger.debug("GeminiBackend inicializado con modelo=%s", self._model)
+        _logger.debug("GroqBackend inicializado con modelo=%s", self._model)
 
     def parse(self, pregunta: str, hint: Optional[Intent] = None) -> Intent:
-        """Call the Gemini API and return a structured Intent.
+        """Call the Groq API and return a structured Intent.
 
         Args:
             pregunta: Raw Spanish question.
@@ -334,31 +332,26 @@ class GeminiBackend(LLMBackend):
         Returns:
             Intent with origen="llm".
         """
-        from google.genai import types  # local import
-
         user_message = _build_user_message(pregunta, hint)
 
-        _logger.debug("Llamando a Gemini model=%s", self._model)
+        _logger.debug("Llamando a Groq model=%s", self._model)
 
-        response = self._client.models.generate_content(
+        response = self._client.chat.completions.create(
             model=self._model,
-            contents=user_message,
-            config=types.GenerateContentConfig(
-                system_instruction=self._system_prompt,
-                response_mime_type="application/json",
-                response_schema=Intent,
-            ),
+            messages=[
+                {"role": "system", "content": self._system_prompt},
+                {"role": "user", "content": user_message},
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.1,
         )
 
-        raw_text = response.text
+        raw_text = response.choices[0].message.content
         if not raw_text:
-            finish = (response.candidates[0].finish_reason
-                      if response.candidates else "sin candidatos")
             raise RuntimeError(
-                f"Gemini devolvió respuesta vacía (modelo={self._model}, "
-                f"finish_reason={finish})"
+                f"Groq devolvió respuesta vacía (modelo={self._model})"
             )
-        _logger.debug("Respuesta Gemini (raw): %s", raw_text[:300])
+        _logger.debug("Respuesta Groq (raw): %s", raw_text[:300])
 
         intent_dict = json.loads(raw_text)
 
@@ -381,15 +374,15 @@ def parse(
 ) -> Intent:
     """Parse a railway question using an LLM backend.
 
-    Uses GeminiBackend by default if GEMINI_API_KEY (or GOOGLE_API_KEY) is
-    set in the environment. Falls back gracefully to StubBackend if neither
-    key is available and no explicit backend was provided.
+    Uses GroqBackend by default if GROQ_API_KEY is set in the environment.
+    Falls back gracefully to StubBackend if the key is not available and no
+    explicit backend was provided.
 
     Args:
         pregunta: Raw Spanish question.
         hint: Optional partial Intent from the rule-based parser to provide
               context to the LLM.
-        backend: Explicit LLMBackend to use. If None, GeminiBackend is
+        backend: Explicit LLMBackend to use. If None, GroqBackend is
                  instantiated when an API key is available; StubBackend
                  otherwise.
 
@@ -397,15 +390,13 @@ def parse(
         Intent with origen="llm".
     """
     if backend is None:
-        has_key = bool(
-            os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-        )
+        has_key = bool(os.environ.get("GROQ_API_KEY"))
         if has_key:
-            backend = GeminiBackend()
+            backend = GroqBackend()
         else:
             _logger.warning(
-                "GEMINI_API_KEY no configurada — usando StubBackend. "
-                "Configura GEMINI_API_KEY para habilitar el parser LLM real."
+                "GROQ_API_KEY no configurada — usando StubBackend. "
+                "Configura GROQ_API_KEY para habilitar el parser LLM real."
             )
             backend = StubBackend()
 

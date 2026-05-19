@@ -42,7 +42,7 @@ def responder(
     pregunta:
         Natural language question in Spanish.
     sin_llm_nl:
-        If True, skip Gemini for NL generation and use templates only.
+        If True, skip Groq for NL generation and use templates only.
     forzar_reglas:
         If True, skip the LLM parser and use only the rule-based parser for
         intent extraction.
@@ -174,7 +174,7 @@ def _normalizar(s: str) -> str:
 def _es_intent_fallback(intent, pregunta: str) -> bool:
     """True when parser confidence is low and the chosen metric is not mentioned
     in the question — signals that intent extraction effectively fell back to a
-    default (StubBackend, degraded Gemini, etc.)."""
+    default (StubBackend, degraded Groq, etc.)."""
     if getattr(intent, "confianza", 1.0) > 0.5:
         return False
 

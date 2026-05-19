@@ -28,7 +28,7 @@ class Metadata(BaseModel):
     tabla: str = ""
     cobertura_desde: str = ""  # "YYYY-MM"
     cobertura_hasta: str = ""  # "YYYY-MM"
-    fuente_nl: Literal["gemini", "plantilla", "ninguna"] = "ninguna"
+    fuente_nl: Literal["groq", "plantilla", "ninguna"] = "ninguna"
     tiempo_ms: float = 0.0
     intent_fallback: bool = False
 

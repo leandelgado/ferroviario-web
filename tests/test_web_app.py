@@ -2,8 +2,8 @@
 Tests for the FastAPI web application (web/app.py).
 
 Most tests call the real motor stack (parquet data exists in data/processed/).
-No GEMINI_API_KEY is required — the motor falls back to plantilla NL when
-Gemini is unavailable.
+No GROQ_API_KEY is required — the motor falls back to plantilla NL when
+Groq is unavailable.
 
 test_preguntar_fallback_si_responder_falla patches web.app.responder to
 simulate a failure on the first call and verify the retry logic.
@@ -158,7 +158,7 @@ def test_preguntar_fallback_si_responder_falla(client):
         nonlocal call_count
         call_count += 1
         if call_count == 1:
-            raise Exception("Gemini falla")
+            raise Exception("Groq falla")
         return stub_respuesta
 
     with patch("web.app.responder", side_effect=side_effect) as mock_responder:

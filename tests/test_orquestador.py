@@ -1,7 +1,7 @@
 """
 Unit tests for motor.orquestador.responder — pipeline integration.
 
-All tests use sin_llm_nl=True (no Gemini for NL) to keep tests deterministic.
+All tests use sin_llm_nl=True (no Groq for NL) to keep tests deterministic.
 OOD detection may vary without a real LLM parser; some tests use forzar_reglas=True.
 """
 
@@ -44,7 +44,7 @@ class TestOrquestador(unittest.TestCase):
         """Respuesta must have metadata with tiempo_ms > 0 and valid fuente_nl."""
         resp = responder("pasajeros Mitre 2023", sin_llm_nl=True, forzar_reglas=True)
         self.assertGreater(resp.metadata.tiempo_ms, 0)
-        self.assertIn(resp.metadata.fuente_nl, ("gemini", "plantilla", "ninguna"))
+        self.assertIn(resp.metadata.fuente_nl, ("groq", "plantilla", "ninguna"))
 
     def test_nunca_lanza_excepcion_input_basura(self):
         """Even nonsense input must return a Respuesta (never raise)."""

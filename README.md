@@ -10,7 +10,7 @@ natural, sin necesidad de saber SQL ni manejar dashboards.
   - Input: 3 Excels de CNRT (cumplimiento, operativas, pasajeros).
   - Output: 5 tablas analíticas en parquet+csv (6,090 / 3,165 / 399 / 8 / 20 filas).
   - Cobertura temporal: 1993–2026.
-- **Etapa 2 — Capa semántica** ✅ completada: parser de intención híbrido (reglas + Gemini) que traduce preguntas en español a objetos `Intent` estructurados.
+- **Etapa 2 — Capa semántica** ✅ completada: parser de intención híbrido (reglas + Groq) que traduce preguntas en español a objetos `Intent` estructurados.
 - **Etapa 3 — Motor de consulta del agente** ✅ completada
 - ✅ **Etapa 4** — Interfaz web del agente 
 - ✅ **Etapa 5** — Agrupamiento temporal por año
@@ -90,7 +90,7 @@ Traduce preguntas en español sobre el sistema ferroviario AMBA a un objeto `Int
 
 ### Arquitectura
 
-**Enfoque híbrido:** el parser de reglas (matching determinístico) es el camino principal. Si la confianza es baja (< 0.70) o no se detecta métrica, se invoca el fallback con **Google Gemini** (`gemini-2.5-flash`) que usa structured output para devolver un `Intent` válido.
+**Enfoque híbrido:** el parser de reglas (matching determinístico) es el camino principal. Si la confianza es baja (< 0.70) o no se detecta métrica, se invoca el fallback con **Groq** (`llama-3.3-70b-versatile`) que usa JSON mode para devolver un `Intent` válido.
 
 ```
 pregunta (español)
@@ -104,8 +104,8 @@ pregunta (español)
       │ no
       ▼
 ┌─────────────────────┐
-│   parser_llm        │  Gemini 2.5 Flash, structured output
-│   (Gemini backend)  │──────────────▶ Intent(origen="llm")
+│   parser_llm        │  llama-3.3-70b-versatile (Groq), JSON mode
+│   (GroqBackend)     │──────────────▶ Intent(origen="llm")
 └─────────────────────┘
       │
       ▼
@@ -192,8 +192,7 @@ El 20% de fallos restantes corresponde a preguntas ambiguas (reformulaciones col
 ### Variable de entorno para el fallback LLM
 
 ```bash
-export GEMINI_API_KEY="tu-api-key"
-# o también: GOOGLE_API_KEY
+export GROQ_API_KEY="tu-api-key"
 ```
 
 Sin la variable, el fallback usa un `StubBackend` que devuelve un Intent con `confianza=0.5`.
@@ -213,15 +212,15 @@ Para correr la evaluación del parser semántico:
 # Parser de reglas (sin clave API):
 python semantica/evaluacion/run_eval.py --solo-reglas
 
-# Parser híbrido (requiere GEMINI_API_KEY):
-GEMINI_API_KEY="tu-clave" python semantica/evaluacion/run_eval.py
+# Parser híbrido (requiere GROQ_API_KEY):
+GROQ_API_KEY="tu-clave" python semantica/evaluacion/run_eval.py
 ```
 
 ---
 
 ## Etapa 3 — Motor de consulta del agente
 
-Ejecuta el `Intent` de Etapa 2 contra los parquets de Etapa 1, recalcula ratios correctamente y genera una respuesta en lenguaje natural usando Gemini (`gemini-2.5-flash`).
+Ejecuta el `Intent` de Etapa 2 contra los parquets de Etapa 1, recalcula ratios correctamente y genera una respuesta en lenguaje natural usando Groq (`llama-3.3-70b-versatile`).
 
 ### Arquitectura
 
@@ -230,7 +229,7 @@ pregunta (español)
       │
       ▼
 ┌─────────────────┐
-│  semantica.parse │  Etapa 2: reglas + Gemini → Intent
+│  semantica.parse │  Etapa 2: reglas + Groq → Intent
 └─────────────────┘
       │
       ▼
@@ -254,7 +253,7 @@ pregunta (español)
       │
       ▼
 ┌──────────────────┐
-│  generador_nl    │  Gemini grounded → texto_nl
+│  generador_nl    │  Groq grounded → texto_nl
 │  fallback: plant.│  plantillas si sin LLM
 └──────────────────┘
       │
@@ -305,7 +304,7 @@ print(r.tipo)           # "sin_datos"
 print(r.texto_nl)       # mensaje con cobertura disponible
 
 # Acceso a metadatos
-print(r.metadata.fuente_nl)   # "gemini" | "plantilla" | "ninguna"
+print(r.metadata.fuente_nl)   # "groq" | "plantilla" | "ninguna"
 print(r.metadata.tiempo_ms)   # tiempo total en ms
 ```
 
@@ -324,7 +323,7 @@ python -m motor "Pasajeros Mitre 2023" --debug
 # Sin LLM para NL (modo offline, plantillas determinísticas)
 python -m motor "Pasajeros Mitre 2023" --sin-llm-nl
 
-# Forzar parser de reglas (sin Gemini para parsing)
+# Forzar parser de reglas (sin Groq para parsing)
 python -m motor "Pasajeros Mitre 2023" --solo-reglas
 ```
 
@@ -332,7 +331,7 @@ python -m motor "Pasajeros Mitre 2023" --solo-reglas
 |------|-------------|
 | `--json` | Salida como JSON parseable (`Respuesta.model_dump_json()`) |
 | `--debug` | Texto + `[TIPO]` `[INTENT]` `[DATO]` `[METADATA]` |
-| `--sin-llm-nl` | Usa plantillas en lugar de Gemini para generar texto |
+| `--sin-llm-nl` | Usa plantillas en lugar de Groq para generar texto |
 | `--solo-reglas` | Parseo sin LLM (rápido, sin API key) |
 
 ### Política OOD (fuera de dominio)
@@ -355,10 +354,10 @@ Caso especial: Tren de la Costa tiene datos de regularidad desde mayo 2015.
 
 ### Generación de lenguaje natural
 
-- **Modelo:** `gemini-2.5-flash` con `temperature=0.1`
+- **Modelo:** `llama-3.3-70b-versatile` (Groq) con `temperature=0.1`
 - **Grounding:** la respuesta usa EXCLUSIVAMENTE los números del bloque `DATOS` (el modelo nunca inventa valores)
-- **Fallback:** si no hay `GEMINI_API_KEY` o Gemini falla → plantillas determinísticas en español rioplatense
-- **`fuente_nl`** en `metadata`: `"gemini"` | `"plantilla"` | `"ninguna"`
+- **Fallback:** si no hay `GROQ_API_KEY` o Groq falla → plantillas determinísticas en español rioplatense
+- **`fuente_nl`** en `metadata`: `"groq"` | `"plantilla"` | `"ninguna"`
 
 ### Cómo correr los tests (Etapa 3)
 
@@ -375,8 +374,8 @@ pytest tests/test_almacen.py tests/test_cobertura.py tests/test_ejecutor.py \
 # Gold set motor (16 casos: dato, comparacion, ood, sin_datos)
 pytest tests/test_motor_integracion.py -v
 
-# Tests con Gemini real (requiere GEMINI_API_KEY)
-GEMINI_API_KEY="tu-clave" pytest tests/ -v -m gemini
+# Tests con Groq real (requiere GROQ_API_KEY)
+GROQ_API_KEY="tu-clave" pytest tests/ -v -m groq
 ```
 
 ---
@@ -436,19 +435,19 @@ Push a `main` → Render hace auto-deploy desde Docker (requiere configurar webh
 
 | Variable | Descripción |
 |---|---|
-| `GEMINI_API_KEY` | Google AI Studio (Gemini). Sin esta key el parser cae a reglas y el generador NL usa plantillas determinísticas. |
+| `GROQ_API_KEY` | Groq API key. Sin esta key el parser cae a reglas y el generador NL usa plantillas determinísticas. Free tier: ~14.400 req/día (50× el límite de Gemini). |
 
 #### Local con Docker
 
 ```bash
 docker build -t ferroviario-web .
-docker run --rm -p 8000:8000 -e GEMINI_API_KEY=$GEMINI_API_KEY ferroviario-web
+docker run --rm -p 8000:8000 -e GROQ_API_KEY=$GROQ_API_KEY ferroviario-web
 # Abrir http://localhost:8000
 ```
 
 ### Rate limit y fallback
 
-El endpoint `/api/preguntar` aplica un rate limit de 8 req/min por IP (via `slowapi`). Cuando Gemini no está disponible, el motor usa plantillas determinísticas como fallback offline transparente: la API responde igual, solo cambia `metadata.fuente_nl` de `"gemini"` a `"plantilla"`.
+El endpoint `/api/preguntar` aplica un rate limit de 8 req/min por IP (via `slowapi`). Cuando Groq no está disponible, el motor usa plantillas determinísticas como fallback offline transparente: la API responde igual, solo cambia `metadata.fuente_nl` de `"groq"` a `"plantilla"`.
 
 ### Cómo correr los tests (Etapa 4)
 
@@ -526,7 +525,7 @@ semantica/          # Etapa 2: capa semántica
   vocabulario.py    # cargar_vocabulario()
   fechas.py         # extraer_fecha()
   parser_reglas.py  # parse() determinístico
-  parser_llm.py     # GeminiBackend, StubBackend
+  parser_llm.py     # GroqBackend, StubBackend
   parser.py         # orquestador híbrido
   __init__.py       # expone parse(), Intent, RangoTemporal
   evaluacion/
@@ -542,7 +541,7 @@ motor/              # Etapa 3: motor de consulta
   ejecutor_comparacion.py  # ejecutar_comparacion()
   ejecutor_agrupado.py     # ejecutar_agrupado() — agrupa por año (Etapa 5)
   _ratios.py        # FORMULAS_RATIOS compartido entre ejecutores
-  generador_nl.py   # Gemini grounded + fallback plantillas
+  generador_nl.py   # Groq grounded + fallback plantillas
   plantillas.py     # templates determinísticos (modo offline)
   ood.py            # detección OOD + sugerencias canónicas
   orquestador.py    # pipeline responder()

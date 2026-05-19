@@ -1,11 +1,11 @@
 """
 Natural language response generator for the railway conversational agent.
 
-Generates plain-text NL responses using Gemini (google-genai SDK) with
+Generates plain-text NL responses using Groq (groq SDK, llama-3.3-70b-versatile) with
 automatic fallback to deterministic templates (motor.plantillas) when:
   - sin_llm=True is passed explicitly
   - No API key is configured
-  - Gemini call fails for any reason
+  - Groq call fails for any reason
 
 Public API
 ----------
@@ -54,7 +54,7 @@ Reglas estrictas:
 # Mock backend for testing (at module level so tests can import it easily)
 # ---------------------------------------------------------------------------
 
-class MockGeminiNLBackend:
+class MockGroqNLBackend:
     """Used in tests to verify prompt structure without calling the real API."""
 
     def __init__(self) -> None:
@@ -80,7 +80,7 @@ def _build_datos_dict(
     tipo: str,
     sugerencias: list[str],
 ) -> dict:
-    """Build the DATOS payload for the Gemini user message."""
+    """Build the DATOS payload for the Groq user message."""
     if tipo == "dato" and dato_o_comp is not None:
         dato = dato_o_comp  # type: ignore[assignment]
         return {
@@ -174,7 +174,7 @@ def _build_user_message(
     )
 
 
-def _llamar_gemini(
+def _llamar_groq(
     pregunta: str,
     intent: "Intent",
     dato_o_comp: "Dato | Comparacion | None",
@@ -184,9 +184,9 @@ def _llamar_gemini(
     almacen: Any,
     api_key: str,
     *,
-    _backend: MockGeminiNLBackend | None = None,
+    _backend: MockGroqNLBackend | None = None,
 ) -> str:
-    """Call Gemini and return the generated text. May raise."""
+    """Call Groq and return the generated text. May raise."""
     user_message = _build_user_message(
         pregunta, intent, dato_o_comp, tipo, advertencias, sugerencias, almacen
     )
@@ -194,30 +194,21 @@ def _llamar_gemini(
     if _backend is not None:
         return _backend.generate(_SYSTEM_PROMPT, user_message)
 
-    from google import genai  # local import — keeps module importable without SDK
-    from google.genai import types
+    from groq import Groq  # local import
 
-    client = genai.Client(
-        api_key=api_key,
-        http_options=types.HttpOptions(timeout=30_000),
+    client = Groq(api_key=api_key)
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "user", "content": user_message},
+        ],
+        temperature=0.1,
+        max_tokens=1024,
     )
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=user_message,
-        config=types.GenerateContentConfig(
-            system_instruction=_SYSTEM_PROMPT,
-            temperature=0.1,
-            max_output_tokens=1024,
-            response_mime_type="text/plain",
-        ),
-    )
-    texto = (response.text or "").strip()
+    texto = (response.choices[0].message.content or "").strip()
     if not texto:
-        try:
-            finish_reason = response.candidates[0].finish_reason
-        except (IndexError, AttributeError):
-            finish_reason = "unknown"
-        raise ValueError(f"Gemini no devolvió texto (finish_reason={finish_reason!r})")
+        raise ValueError("Groq no devolvió texto")
     return texto
 
 
@@ -329,7 +320,7 @@ def generar_nl(
     -------
     tuple[str, str]
         (texto_nl, fuente_nl) where fuente_nl is one of
-        "gemini", "plantilla", or "ninguna".
+        "groq", "plantilla", or "ninguna".
     """
     # 1. Explicit bypass
     if sin_llm:
@@ -337,25 +328,25 @@ def generar_nl(
         return texto, "plantilla"
 
     # 2. Check API key availability
-    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    api_key = os.environ.get("GROQ_API_KEY")
     if not api_key:
         _logger.debug(
-            "GEMINI_API_KEY no configurada — usando plantillas para generación NL."
+            "GROQ_API_KEY no configurada — usando plantillas para generación NL."
         )
         texto = _fallback_plantillas(tipo, dato_o_comp, advertencias, sugerencias, intent)
         return texto, "plantilla"
 
-    # 3. Try Gemini
+    # 3. Try Groq
     try:
-        texto = _llamar_gemini(
+        texto = _llamar_groq(
             pregunta, intent, dato_o_comp, tipo, advertencias, sugerencias, almacen, api_key
         )
         if not texto:
-            _logger.debug("Gemini devolvió texto vacío — usando plantillas.")
+            _logger.debug("Groq devolvió texto vacío — usando plantillas.")
             texto = _fallback_plantillas(tipo, dato_o_comp, advertencias, sugerencias, intent)
             return texto, "plantilla"
-        return texto, "gemini"
+        return texto, "groq"
     except Exception as exc:  # noqa: BLE001
-        _logger.warning("Error llamando a Gemini para NL: %s — usando plantillas.", exc)
+        _logger.warning("Error llamando a Groq para NL: %s — usando plantillas.", exc)
         texto = _fallback_plantillas(tipo, dato_o_comp, advertencias, sugerencias, intent)
         return texto, "plantilla"

@@ -305,7 +305,7 @@ function renderProcedencia(intent, fuente_nl, intentFallback) {
 
   const origen = intent.origen || 'reglas';
   const intentLabel = (origen === 'reglas' || intentFallback) ? 'Plantilla' : 'LLM';
-  const nlLabel = fuente_nl === 'gemini' ? 'LLM' : 'Plantilla';
+  const nlLabel = fuente_nl === 'groq' ? 'LLM' : 'Plantilla';
 
   intentEl.textContent = intentLabel;
   nlEl.textContent = nlLabel;

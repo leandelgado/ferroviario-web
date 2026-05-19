@@ -23,7 +23,7 @@ def main() -> None:
         "--sin-llm-nl",
         action="store_true",
         dest="sin_llm_nl",
-        help="Usar solo plantillas (sin Gemini para NL)",
+        help="Usar solo plantillas (sin Groq para NL)",
     )
     parser.add_argument(
         "--solo-reglas",

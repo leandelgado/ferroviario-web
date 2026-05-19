@@ -87,8 +87,8 @@ def parse(
         pregunta: Natural language question in Spanish.
         forzar_llm: Skip rule-based parser and go directly to LLM. Useful
                     for testing LLM fallback path.
-        llm_backend: Custom LLM backend instance. Defaults to GeminiBackend
-                     if GEMINI_API_KEY is set, else StubBackend.
+        llm_backend: Custom LLM backend instance. Defaults to GroqBackend
+                     if GROQ_API_KEY is set, else StubBackend.
 
     Returns:
         Intent with metrica, filtros_linea, filtros_servicio, filtros_traccion,
