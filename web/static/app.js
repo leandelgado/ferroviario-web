@@ -180,7 +180,7 @@ function renderDato(dato, textoNl, advertencias, fuente_nl) {
       ${etiqueta ? `<p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">${escapeHtml(etiqueta)}</p>` : ''}
       <div class="flex items-baseline gap-2">
         <span class="text-4xl font-bold text-white">${escapeHtml(valor)}</span>
-        ${unidad ? `<span class="text-lg text-gray-400">${escapeHtml(unidad)}</span>` : ''}
+        ${unidad ? `<span class="text-lg text-gray-400">${escapeHtml(formatUnidad(unidad))}</span>` : ''}
       </div>
       ${textoNl ? `<p class="text-gray-300 text-sm leading-relaxed">${escapeHtml(textoNl)}</p>` : ''}
     </div>
@@ -217,7 +217,7 @@ function renderComparacion(comp, textoNl, advertencias, fuente_nl) {
             <span class="text-gray-500 mr-1">${idx + 1}.</span>${escapeHtml(it.etiqueta || '—')}
           </span>
           <span class="text-white font-semibold ml-2 whitespace-nowrap">
-            ${escapeHtml(formatNumber(it.valor))}${unidad ? ' <span class="text-gray-400 font-normal text-xs">' + escapeHtml(unidad) + '</span>' : ''}
+            ${escapeHtml(formatNumber(it.valor))}${unidad ? ' <span class="text-gray-400 font-normal text-xs">' + escapeHtml(formatUnidad(unidad)) + '</span>' : ''}
           </span>
         </div>
         <div class="w-full bg-gray-700 rounded-full h-1.5">
@@ -472,6 +472,10 @@ function buildChip(text, variant) {
 
   el.textContent = text;
   return el;
+}
+
+function formatUnidad(u) {
+  return /^\d[\d,.]*\s*[–—-]\s*\d[\d,.]*$/.test(u.trim()) ? `(${u})` : u;
 }
 
 function formatNumber(val) {
