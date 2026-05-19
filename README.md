@@ -10,10 +10,10 @@ natural, sin necesidad de saber SQL ni manejar dashboards.
   - Input: 3 Excels de CNRT (cumplimiento, operativas, pasajeros).
   - Output: 5 tablas analíticas en parquet+csv (6,090 / 3,165 / 399 / 8 / 20 filas).
   - Cobertura temporal: 1993–2026.
-- **Etapa 2 — Capa semántica** ✅ completada (2026-05-11): parser de intención híbrido (reglas + Gemini) que traduce preguntas en español a objetos `Intent` estructurados.
-- **Etapa 3 — Motor de consulta del agente** ✅ completada (2026-05-12)
-- ✅ **Etapa 4** — Interfaz web del agente _(2026-05-13)_
-- ✅ **Etapa 5** — Agrupamiento temporal por año _(2026-05-15)_
+- **Etapa 2 — Capa semántica** ✅ completada: parser de intención híbrido (reglas + Gemini) que traduce preguntas en español a objetos `Intent` estructurados.
+- **Etapa 3 — Motor de consulta del agente** ✅ completada
+- ✅ **Etapa 4** — Interfaz web del agente 
+- ✅ **Etapa 5** — Agrupamiento temporal por año
 
 ---
 
