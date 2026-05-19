@@ -199,7 +199,7 @@ def _llamar_gemini(
 
     client = genai.Client(
         api_key=api_key,
-        http_options=types.HttpOptions(timeout=10_000),  # 10 seconds in ms
+        http_options=types.HttpOptions(timeout=30_000),
     )
     response = client.models.generate_content(
         model="gemini-2.5-flash",
@@ -209,7 +209,6 @@ def _llamar_gemini(
             temperature=0.1,
             max_output_tokens=1024,
             response_mime_type="text/plain",
-            thinking_config=types.ThinkingConfig(thinking_budget=0),
         ),
     )
     texto = (response.text or "").strip()

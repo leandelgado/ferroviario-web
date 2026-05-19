@@ -73,14 +73,11 @@ async def debug_env():
         try:
             from google import genai
             from google.genai import types
-            client = genai.Client(api_key=key, http_options=types.HttpOptions(timeout=5_000))
+            client = genai.Client(api_key=key, http_options=types.HttpOptions(timeout=30_000))
             r = client.models.generate_content(
                 model="gemini-2.5-flash",
                 contents="Respondé solo 'ok'",
-                config=types.GenerateContentConfig(
-                    temperature=0.1, max_output_tokens=10,
-                    thinking_config=types.ThinkingConfig(thinking_budget=0),
-                ),
+                config=types.GenerateContentConfig(temperature=0.1, max_output_tokens=10),
             )
             result["gemini_test"] = "ok" if r.text else "empty"
         except Exception as e:
