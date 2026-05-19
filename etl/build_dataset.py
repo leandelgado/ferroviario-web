@@ -444,12 +444,12 @@ _ind = [
      '0–1',          False, 'mayor', 'servicio',
      ['cumplimiento']),
 
-    ('recaudacion_pesos',     'Recaudación (pesos)',
+    ('recaudacion_pesos',     'Recaudación ($)',
      'Ingresos por venta de boletos en pesos corrientes',
      '$ ARS',        True,  'mayor', 'servicio',
      ['recaudación', 'ingresos boletos']),
 
-    ('tarifa_media_pesos',    'Tarifa media (pesos)',
+    ('tarifa_media_pesos',    'Tarifa media ($)',
      'Recaudación / pasajeros pagos en pesos corrientes',
      '$ ARS/pax',    False, 'neutral', 'servicio',
      ['precio promedio boleto', 'tarifa']),
