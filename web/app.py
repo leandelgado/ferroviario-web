@@ -1,5 +1,4 @@
 import logging
-import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -64,25 +63,6 @@ async def root():
 async def healthz():
     return {"status": "ok"}
 
-
-@app.get("/api/debug-env")
-async def debug_env():
-    key = os.environ.get("GEMINI_API_KEY", "")
-    result = {"gemini_key_set": bool(key), "gemini_key_len": len(key)}
-    if key:
-        try:
-            from google import genai
-            from google.genai import types
-            client = genai.Client(api_key=key, http_options=types.HttpOptions(timeout=30_000))
-            r = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents="Respondé solo 'ok'",
-                config=types.GenerateContentConfig(temperature=0.1, max_output_tokens=10),
-            )
-            result["gemini_test"] = "ok" if r.text else "empty"
-        except Exception as e:
-            result["gemini_error"] = str(e)
-    return result
 
 
 @app.get("/api/ejemplos")

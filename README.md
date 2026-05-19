@@ -424,7 +424,27 @@ uvicorn web.app:app --reload --port 8000
 # Abrir http://localhost:8000
 ```
 
-**URL del deploy público:** _(pendiente de deploy en Render)_
+**URL del deploy público:** https://ferroviario-web.onrender.com (Render free tier — duerme tras 15 min de inactividad, cold start ~30 s)
+
+### Deployment
+
+**Producción:** https://ferroviario-web.onrender.com
+
+Push a `main` → Render hace auto-deploy desde Docker (requiere configurar webhook manualmente o usar trigger API).
+
+#### Variables de entorno requeridas en Render
+
+| Variable | Descripción |
+|---|---|
+| `GEMINI_API_KEY` | Google AI Studio (Gemini). Sin esta key el parser cae a reglas y el generador NL usa plantillas determinísticas. |
+
+#### Local con Docker
+
+```bash
+docker build -t ferroviario-web .
+docker run --rm -p 8000:8000 -e GEMINI_API_KEY=$GEMINI_API_KEY ferroviario-web
+# Abrir http://localhost:8000
+```
 
 ### Rate limit y fallback
 
