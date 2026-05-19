@@ -74,9 +74,16 @@ def extraer_fecha(texto: str) -> Optional[RangoTemporal]:
         match = re.search(pattern, texto)
         if match:
             ano_inicio, ano_fin = match.groups()
+            now = datetime.now()
+            if int(ano_fin) >= now.year:
+                hasta_mes = f"{now.month:02d}"
+                hasta_ano = str(now.year)
+            else:
+                hasta_mes = "12"
+                hasta_ano = ano_fin
             return RangoTemporal(
                 desde=f"{ano_inicio}-01",
-                hasta=f"{ano_fin}-12"
+                hasta=f"{hasta_ano}-{hasta_mes}"
             )
 
     # Pattern 3: Single year
@@ -90,9 +97,14 @@ def extraer_fecha(texto: str) -> Optional[RangoTemporal]:
         match = re.search(pattern, texto)
         if match:
             ano = match.group(1)
+            now = datetime.now()
+            if int(ano) >= now.year:
+                hasta = f"{ano}-{now.month:02d}"
+            else:
+                hasta = f"{ano}-12"
             return RangoTemporal(
                 desde=f"{ano}-01",
-                hasta=f"{ano}-12"
+                hasta=hasta
             )
 
     # Pattern 4: Relative "este ano" (this year)

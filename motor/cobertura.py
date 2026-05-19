@@ -79,13 +79,13 @@ def validar_temporal(intent, almacen) -> ResultadoCobertura:
 
     rango = intent.rango_temporal
 
-    # Check whether the requested range falls outside available data
-    fuera_de_rango = (
-        rango.desde < desde
-        or rango.hasta > hasta
+    # Reject only when there is zero overlap with available data
+    sin_solapamiento = (
+        rango.hasta < desde   # range ends before data starts
+        or rango.desde > hasta  # range starts after data ends
     )
 
-    if fuera_de_rango:
+    if sin_solapamiento:
         return ResultadoCobertura(
             valido=False,
             mensaje=(
