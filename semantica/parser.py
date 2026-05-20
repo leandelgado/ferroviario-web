@@ -21,6 +21,33 @@ from semantica.parser_reglas import parse as parse_reglas
 _logger = logging.getLogger(__name__)
 
 
+def _fix_tabla_por_granularidad_minima(intent: Intent) -> Intent:
+    """Upgrade red_mensual → linea_mensual when the metric only exists at line level.
+
+    Metrics like km_linea and estaciones have granularidad_minima="linea" and are
+    absent from red_mensual. The LLM parser routes them to red_mensual when there
+    are no line filters (following its default coherence rules), which causes a
+    ValueError at execution time. This corrects that routing.
+    """
+    if intent.tabla != "red_mensual" or not intent.metrica:
+        return intent
+    try:
+        from semantica.vocabulario import cargar_vocabulario
+        voc = cargar_vocabulario()
+        for row in voc.metricas_por_sinonimo.values():
+            if row["campo"] == intent.metrica:
+                gran = str(row.get("granularidad_minima", "")).lower()
+                gran = gran.replace("\xed", "i")  # "í" → "i" (accent-insensitive)
+                if gran == "linea":
+                    return intent.model_copy(
+                        update={"tabla": "linea_mensual", "granularidad": "linea"}
+                    )
+                break
+    except Exception:
+        pass
+    return intent
+
+
 def _merge(intent_reglas: Intent, intent_llm: Intent) -> Intent:
     """Merge rule-based and LLM results, preferring LLM with fallback to rules.
 
@@ -103,7 +130,7 @@ def parse(
     if forzar_llm:
         _logger.debug("forzar_llm=True, saltando parser de reglas")
         intent = parse_llm(pregunta, backend=llm_backend)
-        return intent
+        return _fix_tabla_por_granularidad_minima(intent)
 
     # Run rule-based parser
     result_reglas = parse_reglas(pregunta)
@@ -138,4 +165,4 @@ def parse(
         merged.confianza,
         merged.metrica,
     )
-    return merged
+    return _fix_tabla_por_granularidad_minima(merged)
