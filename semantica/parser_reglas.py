@@ -250,6 +250,9 @@ def _infer_agregacion(
     advertencias: list[str] = []
 
     # Explicit max/min override — checked first so ranking queries can override static defaults.
+    # "mas corta/corto" must be checked before the generic "mas" catch to avoid false max.
+    if any(kw in texto_norm for kw in ("mas corta", "mas corto", "corta", "corto")):
+        return "min", advertencias
     if any(kw in texto_norm for kw in ("maximo", "mayor", "pico", "mejor", "mas", "maxima")):
         return "max", advertencias
     if any(kw in texto_norm for kw in ("minimo", "menor", "menos", "peor")):

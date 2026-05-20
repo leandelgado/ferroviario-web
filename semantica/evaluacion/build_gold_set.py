@@ -361,6 +361,8 @@ NEW += [
     e("q198","qué línea tuvo la mayor tasa de cancelación en 2022","E","tasa_cancelacion","max",[],yr(2022),"linea","linea_mensual"),
     e("q199","cuál es la línea más larga","E","km_linea","max",[],None,"linea","linea_mensual"),
     e("q200","qué línea tiene más estaciones","E","estaciones","max",[],None,"linea","linea_mensual"),
+    e("q218","cuál es la línea más corta","E","km_linea","min",[],None,"linea","linea_mensual"),
+    e("q219","qué línea es la más corta","E","km_linea","min",[],None,"linea","linea_mensual"),
     e("q201","la peor línea en regularidad en 2021","E","regularidad_absoluta","min",[],yr(2021),"linea","linea_mensual"),
     e("q202","qué línea transportó menos pasajeros en 2020","E","pax_pagos","min",[],yr(2020),"linea","linea_mensual"),
 ]
@@ -394,9 +396,13 @@ NEW += [
 def build() -> None:
     campos_validos = _load_campos()
 
-    # Add "categoria" to existing base items (mark as baseline)
+    # Add "categoria" to existing base items (mark as baseline).
+    # Exclude IDs already defined in NEW so re-running is idempotent.
+    new_ids = {item["id"] for item in NEW}
     base_with_cat = []
     for item in BASE:
+        if item["id"] in new_ids:
+            continue
         item_copy = dict(item)
         if "categoria" not in item_copy:
             item_copy["categoria"] = "baseline"

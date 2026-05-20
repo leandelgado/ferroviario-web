@@ -10,9 +10,9 @@ natural, sin necesidad de saber SQL ni manejar dashboards.
   - Input: 3 Excels de CNRT (cumplimiento, operativas, pasajeros).
   - Output: 5 tablas analíticas en parquet+csv (6,090 / 3,165 / 399 / 8 / 20 filas).
   - Cobertura temporal: 1993–2026.
-- **Etapa 2 — Capa semántica** ✅ completada: parser de intención híbrido (reglas + Groq) que traduce preguntas en español a objetos `Intent` estructurados.
+- **Etapa 2 — Capa semántica** ✅ completada: parser de intención híbrido (reglas + Groq) que traduce preguntas en español a objetos `Intent` estructurados, con soporte para agrupamiento temporal por año.
 - **Etapa 3 — Motor de consulta del agente** ✅ completada
-- ✅ **Etapa 4** — Interfaz web del agente 
+- ✅ **Etapa 4** — Interfaz web del agente
 - ✅ **Etapa 5** — Agrupamiento temporal por año
 
 ---
@@ -164,8 +164,53 @@ class Intent(BaseModel):
     es_dominio: bool = True                   # False si la pregunta es OOD
     tipo: Literal["simple","comparacion_lineas","comparacion_periodos"] = "simple"
     rangos_temporales: list[RangoTemporal] = []  # solo en comparacion_periodos
-    # Campo añadido en Etapa 5:
+    # Campo de agrupamiento temporal (Etapa 5):
     grupo_por: Literal["año"] | None = None   # activa el ejecutor agrupado
+```
+
+### Agrupamiento temporal por año
+
+Permite descomponer una métrica en una serie anual sin tener que escribir varias
+preguntas. Una consulta como _"¿Cuántos pasajeros transportó el Urquiza entre
+2018 y 2020?"_ devuelve un único agregado; reformulada como _"Pasajeros **por
+año** en el Urquiza entre 2018 y 2020"_ devuelve 3 valores: uno por año.
+
+#### Activación
+
+El parser de reglas detecta las siguientes formas (todas tras normalizar
+acentos):
+
+`por año`, `por anio`, `por cada año`, `cada año`, `anual`, `anualmente`.
+
+Cuando alguna aparece en la pregunta, el `Intent` toma `grupo_por="año"` y el
+orquestador enruta al `motor.ejecutor_agrupado` en lugar del `ejecutor_simple`
+o `ejecutor_comparacion`.
+
+#### Comportamiento
+
+- **Una sola línea:** un ítem por año (`"2018"`, `"2019"`, ...).
+- **Multi-línea:** matriz línea × año (`"Mitre 2018"`, `"Mitre 2019"`,
+  `"Sarmiento 2018"`, ...). Si la cobertura no es pareja entre líneas se agrega
+  una advertencia.
+- **Ratios** (`regularidad_*`, `tasa_cancelacion`, `cumplimiento_programa`,
+  `tarifa_media_pesos`): cada año se **recalcula** desde sus componentes
+  (numerador y denominador), nunca se promedian los ratios mensuales.
+- **Sin rango temporal:** se usa toda la cobertura disponible y se agrega una
+  advertencia.
+- **Render UI:** se reutiliza `renderComparacion` (barras horizontales).
+  La respuesta es `tipo="comparacion"` con `Comparacion(eje="periodo", items=[...])`.
+
+#### Ejemplos
+
+```bash
+python -m motor "Pasajeros por año en el Urquiza entre 2018 y 2020"
+# → 2018: 28.9M | 2019: 26.6M | 2020: 8.5M
+
+python -m motor "Cancelaciones del Mitre y Sarmiento por año entre 2018 y 2020"
+# → Mitre 2018: 15.1K | Mitre 2019: 12.9K | Mitre 2020: 6.9K
+#   Sarmiento 2018: 5.0K | Sarmiento 2019: 6.4K | Sarmiento 2020: 16.0K
+
+python -m motor "Cancelaciones anuales del Sarmiento desde 2020"
 ```
 
 ### Evaluación
@@ -175,19 +220,30 @@ class Intent(BaseModel):
 python semantica/evaluacion/run_eval.py --solo-reglas
 ```
 
-Resultados sobre el gold set de 35 preguntas curadas (mayo 2026):
+Resultados sobre el gold set de 215 preguntas curadas en 7 categorías (mayo 2026):
+
+| Categoría | Descripción | Casos |
+|-----------|-------------|-------|
+| baseline | Preguntas canónicas bien formadas | 35 |
+| A | Variantes lingüísticas (sinónimos, reformulaciones) | 71 |
+| B | Robustez tipográfica (minúsculas, MAYÚSCULAS, typos, abreviaciones) | 23 |
+| C | Expresiones temporales variadas (rangos, meses, relativos) | 41 |
+| D | Estilo telegráfico mínimo | 17 |
+| E | Consultas de ranking (max/min por línea) | 17 |
+| F | Fuera de dominio (OOD) | 8 |
+| G | Filtros por tracción (eléctrico/diésel) | 5 |
 
 | Componente       | Accuracy |
 |------------------|----------|
-| metrica          |   91.4%  |
-| agregacion       |   85.7%  |
+| metrica          |   99.0%  |
+| agregacion       |   99.5%  |
 | filtros_linea    |  100.0%  |
 | rango_temporal   |  100.0%  |
 | granularidad     |  100.0%  |
 | tabla            |  100.0%  |
-| **GLOBAL**       | **80.0%**|
+| **GLOBAL**       | **99.5%**|
 
-El 20% de fallos restantes corresponde a preguntas ambiguas (reformulaciones coloquiales, métricas implícitas) correctamente escaladas al fallback LLM.
+El 0.5% de fallos restantes corresponde a preguntas muy ambiguas correctamente escaladas al fallback LLM.
 
 ### Variable de entorno para el fallback LLM
 
@@ -214,6 +270,13 @@ python semantica/evaluacion/run_eval.py --solo-reglas
 
 # Parser híbrido (requiere GROQ_API_KEY):
 GROQ_API_KEY="tu-clave" python semantica/evaluacion/run_eval.py
+```
+
+Tests de agrupamiento temporal:
+
+```bash
+pytest tests/test_ejecutor_agrupado.py -v
+pytest tests/test_parser_reglas.py::test_parse_detecta_grupo_por -v
 ```
 
 ---
@@ -249,6 +312,7 @@ pregunta (español)
 │  Ejecutor                        │
 │  simple → ejecutar_simple()      │  filtros, agregación,
 │  comparación → ejecutar_compar() │  ratio recalculado
+│  agrupado → ejecutar_agrupado()  │  serie anual por año
 └──────────────────────────────────┘
       │
       ▼
@@ -457,60 +521,6 @@ pytest tests/test_web_app.py tests/test_web_rate_limit.py -v
 
 ---
 
-## Etapa 5 — Agrupamiento temporal por año
-
-Permite descomponer una métrica en una serie anual sin tener que escribir varias
-preguntas. Una consulta como _"¿Cuántos pasajeros transportó el Urquiza entre
-2018 y 2020?"_ devuelve un único agregado; reformulada como _"Pasajeros **por
-año** en el Urquiza entre 2018 y 2020"_ devuelve 3 valores: uno por año.
-
-### Activación
-
-El parser de reglas detecta las siguientes formas (todas tras normalizar
-acentos):
-
-`por año`, `por anio`, `por cada año`, `cada año`, `anual`, `anualmente`.
-
-Cuando alguna aparece en la pregunta, el `Intent` toma `grupo_por="año"` y el
-orquestador enruta al `motor.ejecutor_agrupado` en lugar del `ejecutor_simple`
-o `ejecutor_comparacion`.
-
-### Comportamiento
-
-- **Una sola línea:** un ítem por año (`"2018"`, `"2019"`, ...).
-- **Multi-línea:** matriz línea × año (`"Mitre 2018"`, `"Mitre 2019"`,
-  `"Sarmiento 2018"`, ...). Si la cobertura no es pareja entre líneas se agrega
-  una advertencia.
-- **Ratios** (`regularidad_*`, `tasa_cancelacion`, `cumplimiento_programa`,
-  `tarifa_media_pesos`): cada año se **recalcula** desde sus componentes
-  (numerador y denominador), nunca se promedian los ratios mensuales.
-- **Sin rango temporal:** se usa toda la cobertura disponible y se agrega una
-  advertencia.
-- **Render UI:** se reutiliza `renderComparacion` (barras horizontales).
-  La respuesta es `tipo="comparacion"` con `Comparacion(eje="periodo", items=[...])`.
-
-### Ejemplos
-
-```bash
-python -m motor "Pasajeros por año en el Urquiza entre 2018 y 2020"
-# → 2018: 28.9M | 2019: 26.6M | 2020: 8.5M
-
-python -m motor "Cancelaciones del Mitre y Sarmiento por año entre 2018 y 2020"
-# → Mitre 2018: 15.1K | Mitre 2019: 12.9K | Mitre 2020: 6.9K
-#   Sarmiento 2018: 5.0K | Sarmiento 2019: 6.4K | Sarmiento 2020: 16.0K
-
-python -m motor "Cancelaciones anuales del Sarmiento desde 2020"
-```
-
-### Cómo correr los tests (Etapa 5)
-
-```bash
-pytest tests/test_ejecutor_agrupado.py -v
-pytest tests/test_parser_reglas.py::test_parse_detecta_grupo_por -v
-```
-
----
-
 ## Estructura de carpetas
 
 ```
@@ -524,12 +534,12 @@ semantica/          # Etapa 2: capa semántica
   normalizacion.py  # normalizar() y tokenizar()
   vocabulario.py    # cargar_vocabulario()
   fechas.py         # extraer_fecha()
-  parser_reglas.py  # parse() determinístico
+  parser_reglas.py  # parse() determinístico (incluye detección de grupo_por)
   parser_llm.py     # GroqBackend, StubBackend
   parser.py         # orquestador híbrido
   __init__.py       # expone parse(), Intent, RangoTemporal
   evaluacion/
-    gold_set.json   # 35 preguntas curadas
+    gold_set.json   # 215 preguntas curadas (7 categorías: baseline, A–G)
     run_eval.py     # mide accuracy por componente
 motor/              # Etapa 3: motor de consulta
   __init__.py       # API pública: responder(), Respuesta, etc.
@@ -573,7 +583,7 @@ tests/
   test_orquestador.py
   test_cli.py
   test_motor_integracion.py
-  test_ejecutor_agrupado.py  # Etapa 5: agrupamiento por año
+  test_ejecutor_agrupado.py  # agrupamiento por año (Etapa 5)
   gold_set_motor.json   # casos: dato, comparacion, ood, sin_datos, agrupado
   # Etapa 4
   test_web_app.py

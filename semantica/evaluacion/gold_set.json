@@ -3892,6 +3892,36 @@
     }
   },
   {
+    "id": "q218",
+    "pregunta": "cuál es la línea más corta",
+    "categoria": "E",
+    "esperado": {
+      "metrica": "km_linea",
+      "agregacion": "min",
+      "filtros_linea": [],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": null,
+      "granularidad": "linea",
+      "tabla": "linea_mensual"
+    }
+  },
+  {
+    "id": "q219",
+    "pregunta": "qué línea es la más corta",
+    "categoria": "E",
+    "esperado": {
+      "metrica": "km_linea",
+      "agregacion": "min",
+      "filtros_linea": [],
+      "filtros_servicio": [],
+      "filtros_traccion": [],
+      "rango_temporal": null,
+      "granularidad": "linea",
+      "tabla": "linea_mensual"
+    }
+  },
+  {
     "id": "q201",
     "pregunta": "la peor línea en regularidad en 2021",
     "categoria": "E",
