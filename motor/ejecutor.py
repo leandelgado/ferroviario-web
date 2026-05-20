@@ -97,14 +97,33 @@ def ejecutar_simple(intent, almacen: Almacen) -> tuple[Dato, list[str]]:
     # ------------------------------------------------------------------
     etiqueta_destacada = ""
     if metrica in _FORMULAS_RATIOS:
-        # Recalculate ratio from components — do NOT average
         num_col, den_col = _FORMULAS_RATIOS[metrica]
-        numerador = pd.to_numeric(df[num_col], errors="coerce").sum()
-        denominador = pd.to_numeric(df[den_col], errors="coerce").sum()
-        if denominador == 0:
-            raise ValueError(f"Denominador cero para {metrica}")
-        valor = numerador / denominador
-        agregacion_usada = "ratio_recalculado"
+        agg_ratio = getattr(intent, "agregacion", "sum")
+
+        if agg_ratio in ("max", "min") and "linea" in df.columns:
+            # Compute ratio per line (sum components, then divide), then rank.
+            grouped = df.groupby("linea").agg(
+                _num=(num_col, "sum"),
+                _den=(den_col, "sum"),
+            )
+            grouped["_num"] = pd.to_numeric(grouped["_num"], errors="coerce")
+            grouped["_den"] = pd.to_numeric(grouped["_den"], errors="coerce")
+            grouped = grouped[grouped["_den"] > 0]
+            if grouped.empty:
+                raise ValueError(f"Denominador cero para todas las líneas en '{metrica}'")
+            grouped["_ratio"] = grouped["_num"] / grouped["_den"]
+            idx = grouped["_ratio"].idxmax() if agg_ratio == "max" else grouped["_ratio"].idxmin()
+            valor = float(grouped.loc[idx, "_ratio"])
+            etiqueta_destacada = str(idx)
+            agregacion_usada = agg_ratio
+        else:
+            # Default: recalculate overall ratio — do NOT average
+            numerador = pd.to_numeric(df[num_col], errors="coerce").sum()
+            denominador = pd.to_numeric(df[den_col], errors="coerce").sum()
+            if denominador == 0:
+                raise ValueError(f"Denominador cero para {metrica}")
+            valor = numerador / denominador
+            agregacion_usada = "ratio_recalculado"
     else:
         # Look up aggregability from dim_indicadores
         agregable = dim_row["agregable"].iloc[0] if not dim_row.empty else True
@@ -126,16 +145,20 @@ def ejecutar_simple(intent, almacen: Almacen) -> tuple[Dato, list[str]]:
         elif agg == "mean":
             valor = col_numeric.mean()
             agregacion_usada = agg
-        elif agg == "max":
-            valor = col_numeric.max()
-            agregacion_usada = agg
-            if "linea" in df.columns:
-                etiqueta_destacada = str(df.loc[col_numeric.idxmax(), "linea"])
-        elif agg == "min":
-            valor = col_numeric.min()
-            agregacion_usada = agg
-            if "linea" in df.columns:
-                etiqueta_destacada = str(df.loc[col_numeric.idxmin(), "linea"])
+        elif agg in ("max", "min"):
+            if agregable and "linea" in df.columns:
+                # Rank by line total (sum across periods), then find max/min line.
+                totales = df.assign(_v=col_numeric).groupby("linea")["_v"].sum()
+                idx = totales.idxmax() if agg == "max" else totales.idxmin()
+                valor = float(totales.loc[idx])
+                etiqueta_destacada = str(idx)
+                agregacion_usada = agg
+            else:
+                valor = col_numeric.max() if agg == "max" else col_numeric.min()
+                agregacion_usada = agg
+                if "linea" in df.columns:
+                    ix = col_numeric.idxmax() if agg == "max" else col_numeric.idxmin()
+                    etiqueta_destacada = str(df.loc[ix, "linea"])
         else:
             valor = col_numeric.mean()
             advertencias.append(f"Agregación '{agg}' no reconocida; se usó promedio.")

@@ -251,7 +251,7 @@ def _infer_agregacion(
         return "sum", advertencias
     if any(kw in texto_norm for kw in ("promedio", "media")):
         return "mean", advertencias
-    if any(kw in texto_norm for kw in ("maximo", "mayor", "pico", "mejor")):
+    if any(kw in texto_norm for kw in ("maximo", "mayor", "pico", "mejor", "mas", "maxima")):
         return "max", advertencias
     if any(kw in texto_norm for kw in ("minimo", "menor", "peor")):
         return "min", advertencias
@@ -445,6 +445,18 @@ def parse(pregunta: str) -> ParseResult:
     granularidad, tabla = _infer_tabla_y_granularidad(
         filtros_linea, filtros_servicio, filtros_traccion, metrica, voc
     )
+
+    # Step 7b: upgrade to linea_mensual when user asks "which LINE has max/min".
+    # Pattern: user mentions "linea" as a grouping dimension (not a specific line),
+    # requests a max/min ranking, and table defaulted to red_mensual (no linea col).
+    if (
+        granularidad == "red"
+        and not filtros_linea
+        and agregacion in ("max", "min")
+        and "linea" in texto_norm
+    ):
+        granularidad = "linea"
+        tabla = "linea_mensual"
 
     # Step 8: Compute global confidence and requiere_llm
     # If granularidad is "red", no line was expected, so line confidence = 1.0
