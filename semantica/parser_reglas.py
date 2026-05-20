@@ -36,6 +36,16 @@ _FERROVIARIO_KEYWORDS = re.compile(
 
 _ANIO_RE = re.compile(r'\b(?:19|20)\d{2}\b')
 
+# Detects "en/a/desde/hasta la estacion[es] X" (station as physical destination).
+# Requires a spatial preposition before "estacion" to avoid false positives like
+# "estaciones del Mitre" (metric context) or "estaciones en servicio".
+_ESTACION_UBICACION_RE = re.compile(
+    r'\b(?:en|a|desde|hasta|hacia)\s+(?:la\s+|el\s+|una\s+)?estacion(?:es)?\s+'
+    r'(?:de\s+|del\s+)?'
+    r'(?!en\b|la\b|las\b|los\b|un\b|una\b|el\b|por\b|con\b|que\b|a\b|al\b|del\b|servicio\b)'
+    r'([a-z]{3,})'
+)
+
 # Frases (ya normalizadas — sin tildes) que indican agrupar por año.
 _GRUPO_ANIO_KEYWORDS = (
     "por ano",
@@ -78,6 +88,16 @@ class ParseResult(NamedTuple):
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
+def _detectar_estacion_ubicacion(texto_norm: str) -> str | None:
+    """Detect if the query references a specific station as a physical location.
+
+    Returns the station name (normalised) when 'estacion[es] X' appears and X
+    is not a metric-related stopword.  Returns None otherwise.
+    """
+    match = _ESTACION_UBICACION_RE.search(texto_norm)
+    return match.group(1) if match else None
+
 
 def _ngrams(tokens: list[str], n: int) -> list[str]:
     return [" ".join(tokens[i : i + n]) for i in range(len(tokens) - n + 1)]
@@ -337,12 +357,34 @@ def _infer_tabla_y_granularidad(
     filtros_linea: list[str],
     filtros_servicio: list[str],
     filtros_traccion: list[str],
+    metrica: str | None = None,
+    voc: "Vocabulario | None" = None,
 ) -> tuple[Literal["red", "linea", "servicio"], Literal["red_mensual", "linea_mensual", "servicio_mensual"]]:
-    """Return (granularidad, tabla)."""
+    """Return (granularidad, tabla).
+
+    When no dimensional filters are present, falls back to granularidad_minima
+    from dim_indicadores to avoid routing metrics like km_linea to red_mensual
+    where they don't exist.
+    """
     if filtros_servicio or filtros_traccion:
         return "servicio", "servicio_mensual"
     if filtros_linea:
         return "linea", "linea_mensual"
+
+    # No dimensional filters — check metric's minimum granularity
+    if metrica and voc:
+        gran_min: str = ""
+        for syn_row in voc.metricas_por_sinonimo.values():
+            if syn_row["campo"] == metrica:
+                gran_min = str(syn_row.get("granularidad_minima", "")).lower().strip()
+                break
+        # Normalize accent: "línea" → "linea"
+        gran_min_norm = gran_min.replace("í", "i").replace("\xed", "i")
+        # Only upgrade for "linea" metrics — they don't exist in red_mensual.
+        # "servicio" metrics are aggregated into red_mensual, so no upgrade needed.
+        if gran_min_norm == "linea":
+            return "linea", "linea_mensual"
+
     return "red", "red_mensual"
 
 
@@ -367,8 +409,17 @@ def parse(pregunta: str) -> ParseResult:
     texto_norm = normalizar(pregunta)
     tokens = texto_norm.split()
 
+    # Step 1b: Detect station-as-location references.
+    # When "estacion X" refers to a physical station, exclude "estacion/estaciones"
+    # from metric matching to avoid false positive with "Estaciones en servicio".
+    estacion_mencionada = _detectar_estacion_ubicacion(texto_norm)
+    tokens_metrica = (
+        [t for t in tokens if t not in ("estacion", "estaciones")]
+        if estacion_mencionada else tokens
+    )
+
     # Step 2: Extract metric
-    metrica, confianza_metrica = _extract_metrica(tokens, voc)
+    metrica, confianza_metrica = _extract_metrica(tokens_metrica, voc)
 
     # Step 3: Extract lines
     filtros_linea, confianza_lineas_raw = _extract_lineas(texto_norm, voc)
@@ -383,9 +434,16 @@ def parse(pregunta: str) -> ParseResult:
     # Step 6: Infer aggregation
     agregacion, advertencias = _infer_agregacion(texto_norm, metrica, voc)
 
+    # Step 6b: Add station-scope warning if a specific station was detected
+    if estacion_mencionada:
+        advertencias.append(
+            f"Los datos no están disponibles por estación específica "
+            f"('{estacion_mencionada.title()}'); se muestran datos de la línea completa."
+        )
+
     # Step 7: Determine granularity and table
     granularidad, tabla = _infer_tabla_y_granularidad(
-        filtros_linea, filtros_servicio, filtros_traccion
+        filtros_linea, filtros_servicio, filtros_traccion, metrica, voc
     )
 
     # Step 8: Compute global confidence and requiere_llm
