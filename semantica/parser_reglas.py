@@ -47,6 +47,9 @@ _ESTACION_UBICACION_RE = re.compile(
 )
 
 # Frases (ya normalizadas — sin tildes) que indican agrupar por año.
+# Metrics that represent fixed infrastructure properties — aggregation is always "none".
+_STATIC_METRICS: frozenset[str] = frozenset({"km_linea", "estaciones"})
+
 _GRUPO_ANIO_KEYWORDS = (
     "por ano",
     "por anio",
@@ -246,15 +249,25 @@ def _infer_agregacion(
     """Return (agregacion_literal, advertencias)."""
     advertencias: list[str] = []
 
-    # Explicit keyword overrides
-    if any(kw in texto_norm for kw in ("cuanto", "cuantos", "cuanta", "cuantas", "total", "suma")):
-        return "sum", advertencias
-    if any(kw in texto_norm for kw in ("promedio", "media")):
-        return "mean", advertencias
+    # Explicit max/min override — checked first so ranking queries can override static defaults.
     if any(kw in texto_norm for kw in ("maximo", "mayor", "pico", "mejor", "mas", "maxima")):
         return "max", advertencias
     if any(kw in texto_norm for kw in ("minimo", "menor", "menos", "peor")):
         return "min", advertencias
+
+    # Static infrastructure metrics are "none" unless a max/min keyword was present above.
+    if metrica in _STATIC_METRICS:
+        return "none", advertencias
+
+    if any(kw in texto_norm for kw in ("promedio", "media")):
+        return "mean", advertencias
+
+    # Explicit sum keywords.
+    # "cuantos/cuantas" (plural) → sum (asking for a count).
+    # "cuanto/cuanta"  (singular) → sum only for aggregable metrics; for others let default apply.
+    # "total/suma" → always sum.
+    if any(kw in texto_norm for kw in ("cuantos", "cuantas", "total", "suma")):
+        return "sum", advertencias
 
     # Default based on metric agregability
     if metrica is None:

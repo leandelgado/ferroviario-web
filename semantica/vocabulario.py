@@ -139,35 +139,55 @@ def _build_aliases_linea(lineas_canonicas: list[str]) -> dict[str, str]:
     hardcoded: dict[str, str] = {
         # Mitre
         "mitre": "Mitre",
+        "el mitre": "Mitre",
         "fc mitre": "Mitre",
         "linea mitre": "Mitre",
         "ferrocarril mitre": "Mitre",
         # Sarmiento
         "sarmiento": "Sarmiento",
+        "el sarmiento": "Sarmiento",
         "fc sarmiento": "Sarmiento",
         "linea sarmiento": "Sarmiento",
+        "ferrocarril sarmiento": "Sarmiento",
         # San Martín
         "san martin": "San Martín",
+        "el san martin": "San Martín",
         "fc san martin": "San Martín",
         "linea san martin": "San Martín",
+        "ferrocarril san martin": "San Martín",
         # Roca
         "roca": "Roca",
+        "el roca": "Roca",
         "fc roca": "Roca",
         "linea roca": "Roca",
         "ferrocarril roca": "Roca",
         # Belgrano Norte
         "belgrano norte": "Belgrano Norte",
+        "el belgrano norte": "Belgrano Norte",
         "bn": "Belgrano Norte",
+        "fc belgrano norte": "Belgrano Norte",
+        "linea belgrano norte": "Belgrano Norte",
+        "ferrocarril belgrano norte": "Belgrano Norte",
         # Belgrano Sur
         "belgrano sur": "Belgrano Sur",
+        "el belgrano sur": "Belgrano Sur",
         "bs": "Belgrano Sur",
+        "fc belgrano sur": "Belgrano Sur",
+        "linea belgrano sur": "Belgrano Sur",
+        "ferrocarril belgrano sur": "Belgrano Sur",
         # Urquiza
         "urquiza": "Urquiza",
+        "el urquiza": "Urquiza",
         "fc urquiza": "Urquiza",
         "linea urquiza": "Urquiza",
+        "ferrocarril urquiza": "Urquiza",
         # Tren de la Costa
         "tren de la costa": "Tren de la Costa",
+        "el tren de la costa": "Tren de la Costa",
         "costa": "Tren de la Costa",
+        "tren costa": "Tren de la Costa",
+        "linea costa": "Tren de la Costa",
+        "fc costa": "Tren de la Costa",
         "tdc": "Tren de la Costa",
     }
 

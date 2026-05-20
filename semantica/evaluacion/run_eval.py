@@ -86,6 +86,11 @@ def _expected_value(component: str, esperado: dict) -> object:
 # Main evaluation logic
 # ---------------------------------------------------------------------------
 
+def _is_ood_item(item: dict) -> bool:
+    """Return True if the gold item is an out-of-domain entry."""
+    return item.get("tipo_esperado") == "ood" or item.get("esperado") is None
+
+
 def run_evaluation(gold: list[dict], parse_fn) -> dict:
     """
     Run evaluation against the gold set using parse_fn.
@@ -100,21 +105,66 @@ def run_evaluation(gold: list[dict], parse_fn) -> dict:
           - "global_correct": int
           - "total": int
           - "failures": list of failure dicts
+          - "por_categoria": {categoria: {"correct": int, "total": int}}
+          - "ood_correct": int
+          - "ood_total": int
     """
-    n = len(gold)
+    normal_items = [item for item in gold if not _is_ood_item(item)]
+    n = len(normal_items)
     per_component = {c: {"correct": 0, "total": n} for c in COMPONENTS}
     global_correct = 0
+    ood_correct = 0
+    ood_total = 0
     failures = []
+    por_categoria: dict[str, dict] = {}
+
+    def _cat_key(item: dict) -> str:
+        return item.get("categoria") or "(sin cat)"
+
+    def _register_categoria(key: str, correct: bool) -> None:
+        if key not in por_categoria:
+            por_categoria[key] = {"correct": 0, "total": 0}
+        por_categoria[key]["total"] += 1
+        if correct:
+            por_categoria[key]["correct"] += 1
 
     for item in gold:
         qid = item["id"]
         pregunta = item["pregunta"]
+        cat_key = _cat_key(item)
+
+        if _is_ood_item(item):
+            ood_total += 1
+            try:
+                intent = parse_fn(pregunta)
+                correct = not intent.es_dominio
+            except Exception as exc:
+                correct = False
+                failures.append({
+                    "id": qid,
+                    "pregunta": pregunta,
+                    "error": str(exc),
+                    "mismatches": {"es_dominio": {"esperado": False, "obtenido": f"ERROR: {exc}"}},
+                })
+                _register_categoria("OOD", False)
+                continue
+
+            if correct:
+                ood_correct += 1
+            else:
+                failures.append({
+                    "id": qid,
+                    "pregunta": pregunta,
+                    "mismatches": {"es_dominio": {"esperado": False, "obtenido": True}},
+                })
+            _register_categoria("OOD", correct)
+            continue
+
         esperado = item["esperado"]
 
         try:
             intent = parse_fn(pregunta)
         except Exception as exc:
-            # Count all components as wrong and record failure
             failure = {
                 "id": qid,
                 "pregunta": pregunta,
@@ -127,9 +177,9 @@ def run_evaluation(gold: list[dict], parse_fn) -> dict:
                     "obtenido": f"ERROR: {exc}",
                 }
             failures.append(failure)
+            _register_categoria(cat_key, False)
             continue
 
-        # Evaluate each component
         mismatches = {}
         all_correct = True
 
@@ -153,12 +203,16 @@ def run_evaluation(gold: list[dict], parse_fn) -> dict:
                 "pregunta": pregunta,
                 "mismatches": mismatches,
             })
+        _register_categoria(cat_key, all_correct)
 
     return {
         "per_component": per_component,
         "global_correct": global_correct,
         "total": n,
         "failures": failures,
+        "por_categoria": por_categoria,
+        "ood_correct": ood_correct,
+        "ood_total": ood_total,
     }
 
 
@@ -219,6 +273,42 @@ def print_failures(results: dict) -> None:
         print()
 
 
+def print_categoria_table(results: dict) -> None:
+    """Print a markdown table of accuracy grouped by categoria."""
+    por_categoria = results.get("por_categoria", {})
+    ood_correct = results.get("ood_correct", 0)
+    ood_total = results.get("ood_total", 0)
+
+    if not por_categoria and ood_total == 0:
+        return
+
+    header = f"| {'Categoría':<10} | {'Correcto':>8} | {'Total':>5} | {'Accuracy':>8} |"
+    separator = f"|{'-'*12}|{'-'*10}|{'-'*7}|{'-'*10}|"
+
+    print("## Resultados por categoría\n")
+    print(header)
+    print(separator)
+
+    # Print non-OOD categories first, sorted; OOD and (sin cat) last
+    ood_row = por_categoria.get("OOD")
+    sin_cat_row = por_categoria.get("(sin cat)")
+    other_cats = sorted(
+        k for k in por_categoria if k not in ("OOD", "(sin cat)")
+    )
+
+    for key in other_cats:
+        row = por_categoria[key]
+        print(f"| {key:<10} | {row['correct']:>8} | {row['total']:>5} | {_pct(row['correct'], row['total']):>8} |")
+
+    if ood_row is not None:
+        print(f"| {'OOD':<10} | {ood_row['correct']:>8} | {ood_row['total']:>5} | {_pct(ood_row['correct'], ood_row['total']):>8} |")
+
+    if sin_cat_row is not None:
+        print(f"| {'(sin cat)':<10} | {sin_cat_row['correct']:>8} | {sin_cat_row['total']:>5} | {_pct(sin_cat_row['correct'], sin_cat_row['total']):>8} |")
+
+    print()
+
+
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
@@ -266,6 +356,7 @@ def main() -> int:
     print("## Resultados por componente\n")
     print_markdown_table(results)
     print_failures(results)
+    print_categoria_table(results)
 
     global_acc = 100.0 * results["global_correct"] / results["total"] if results["total"] else 0.0
     print(f"Accuracy global: {results['global_correct']}/{results['total']} ({global_acc:.1f}%)")
