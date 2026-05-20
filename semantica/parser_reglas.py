@@ -253,7 +253,7 @@ def _infer_agregacion(
         return "mean", advertencias
     if any(kw in texto_norm for kw in ("maximo", "mayor", "pico", "mejor", "mas", "maxima")):
         return "max", advertencias
-    if any(kw in texto_norm for kw in ("minimo", "menor", "peor")):
+    if any(kw in texto_norm for kw in ("minimo", "menor", "menos", "peor")):
         return "min", advertencias
 
     # Default based on metric agregability
