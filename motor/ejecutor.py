@@ -95,6 +95,7 @@ def ejecutar_simple(intent, almacen: Almacen) -> tuple[Dato, list[str]]:
     # ------------------------------------------------------------------
     # Step 6: Aggregate / recalculate
     # ------------------------------------------------------------------
+    etiqueta_destacada = ""
     if metrica in _FORMULAS_RATIOS:
         # Recalculate ratio from components — do NOT average
         num_col, den_col = _FORMULAS_RATIOS[metrica]
@@ -128,9 +129,13 @@ def ejecutar_simple(intent, almacen: Almacen) -> tuple[Dato, list[str]]:
         elif agg == "max":
             valor = col_numeric.max()
             agregacion_usada = agg
+            if "linea" in df.columns:
+                etiqueta_destacada = str(df.loc[col_numeric.idxmax(), "linea"])
         elif agg == "min":
             valor = col_numeric.min()
             agregacion_usada = agg
+            if "linea" in df.columns:
+                etiqueta_destacada = str(df.loc[col_numeric.idxmin(), "linea"])
         else:
             valor = col_numeric.mean()
             advertencias.append(f"Agregación '{agg}' no reconocida; se usó promedio.")
@@ -163,4 +168,5 @@ def ejecutar_simple(intent, almacen: Almacen) -> tuple[Dato, list[str]]:
         valor=valor,
         agregacion=agregacion_usada,
         filas_detalle=filas_detalle,
+        etiqueta_destacada=etiqueta_destacada,
     ), advertencias

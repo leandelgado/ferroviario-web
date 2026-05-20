@@ -23,14 +23,17 @@ def _render_dato(
     periodo_desde: str,
     periodo_hasta: str,
     filtros: str = "red",
+    etiqueta_destacada: str = "",
     **kwargs,
 ) -> str:
     """Render a single-value result sentence."""
     # Format the value: use M suffix for millions, K for thousands
     valor_fmt = _formatear_valor(valor, unidad)
 
-    # Build subject
-    if filtros and filtros != "red":
+    # Build subject: prefer etiqueta_destacada for max/min results
+    if etiqueta_destacada and agregacion in ("max", "min"):
+        sujeto = f"La línea {etiqueta_destacada}"
+    elif filtros and filtros != "red":
         sujeto = f"La línea {filtros}"
     else:
         sujeto = "La red"

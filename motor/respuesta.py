@@ -46,6 +46,7 @@ class Dato(BaseModel):
     valor: float
     agregacion: str
     filas_detalle: list[dict] = Field(default_factory=list)
+    etiqueta_destacada: str = ""  # entity (line) that holds the max/min value
 
 
 # ---------------------------------------------------------------------------

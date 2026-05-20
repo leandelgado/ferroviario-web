@@ -47,7 +47,9 @@ Reglas estrictas:
 5. Largo objetivo: 2-4 oraciones. Bullets solo si son 3+ items.
 6. No expliques cómo obtuviste el dato.
 7. Si la pregunta es ambigua, respondé con los datos y sugerí cómo precisarla.
-8. No uses emojis ni markdown decorativo."""
+8. No uses emojis ni markdown decorativo.
+9. Si DATOS incluye 'etiqueta_destacada', es la línea con el valor máximo/mínimo. \
+Mencioná primero el nombre de esa línea como sujeto principal y luego el valor como información adicional."""
 
 
 # ---------------------------------------------------------------------------
@@ -83,13 +85,17 @@ def _build_datos_dict(
     """Build the DATOS payload for the Groq user message."""
     if tipo == "dato" and dato_o_comp is not None:
         dato = dato_o_comp  # type: ignore[assignment]
-        return {
+        result: dict = {
             "valor": dato.valor,
             "unidad": dato.unidad,
             "metrica": dato.metrica,
             "etiqueta_humana": dato.etiqueta_humana,
             "agregacion": dato.agregacion,
         }
+        etiqueta_dest = getattr(dato, "etiqueta_destacada", "")
+        if etiqueta_dest:
+            result["etiqueta_destacada"] = etiqueta_dest
+        return result
     if tipo == "comparacion" and dato_o_comp is not None:
         comp = dato_o_comp  # type: ignore[assignment]
         return {
@@ -253,6 +259,7 @@ def _fallback_plantillas(
             periodo_desde=periodo_desde,
             periodo_hasta=periodo_hasta,
             filtros=filtros,
+            etiqueta_destacada=getattr(dato, "etiqueta_destacada", ""),
         )
     if tipo == "comparacion" and dato_o_comp is not None:
         comp = dato_o_comp  # type: ignore[assignment]
