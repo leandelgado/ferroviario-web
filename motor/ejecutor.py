@@ -154,11 +154,18 @@ def ejecutar_simple(intent, almacen: Almacen) -> tuple[Dato, list[str]]:
                 etiqueta_destacada = str(idx)
                 agregacion_usada = agg
             else:
-                valor = col_numeric.max() if agg == "max" else col_numeric.min()
-                agregacion_usada = agg
                 if "linea" in df.columns:
-                    ix = col_numeric.idxmax() if agg == "max" else col_numeric.idxmin()
-                    etiqueta_destacada = str(df.loc[ix, "linea"])
+                    # Non-aggregable: compare lines by per-line mean (e.g. km_linea),
+                    # not by raw row max/min which would pick extreme monthly outliers
+                    # within a single line instead of comparing lines against each other.
+                    medias = df.assign(_v=col_numeric).groupby("linea")["_v"].mean()
+                    idx = medias.idxmax() if agg == "max" else medias.idxmin()
+                    valor = float(medias.loc[idx])
+                    etiqueta_destacada = str(idx)
+                    agregacion_usada = agg
+                else:
+                    valor = col_numeric.max() if agg == "max" else col_numeric.min()
+                    agregacion_usada = agg
         else:
             valor = col_numeric.mean()
             advertencias.append(f"Agregación '{agg}' no reconocida; se usó promedio.")
