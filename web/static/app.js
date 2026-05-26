@@ -482,7 +482,10 @@ function formatNumber(val) {
   if (val == null) return '—';
   const num = Number(val);
   if (isNaN(num)) return String(val);
-  return num.toLocaleString('es-AR');
+  return num.toLocaleString('es-AR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 function escapeHtml(str) {

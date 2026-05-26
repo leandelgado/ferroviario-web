@@ -124,12 +124,12 @@ def _formatear_valor(valor: float, unidad: str = "") -> str:
     if math.isnan(valor):
         return f"sin dato ({unidad})" if unidad else "sin dato"
     if abs(valor) >= 1_000_000:
-        return f"{valor / 1_000_000:.1f}M"
+        return f"{valor / 1_000_000:.2f}M"
     if abs(valor) >= 1_000:
-        return f"{valor / 1_000:.1f}K"
-    # For ratios / percentages keep 2 decimal places
+        return f"{valor / 1_000:.2f}K"
+    # Keep 2 decimal places everywhere (M/K, %, plain)
     if unidad and "%" in unidad:
-        return f"{valor:.1f}%"
+        return f"{valor:.2f}%"
     return f"{valor:.2f}"
 
 

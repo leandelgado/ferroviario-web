@@ -49,7 +49,10 @@ Reglas estrictas:
 7. Si la pregunta es ambigua, respondé con los datos y sugerí cómo precisarla.
 8. No uses emojis ni markdown decorativo.
 9. Si DATOS incluye 'etiqueta_destacada', es la línea con el valor máximo/mínimo. \
-Mencioná primero el nombre de esa línea como sujeto principal y luego el valor como información adicional."""
+Mencioná primero el nombre de esa línea como sujeto principal y luego el valor como información adicional.
+10. Formateá los valores numéricos con 2 decimales. Para valores ≥ 1.000.000 usá sufijo "M" \
+(ej.: 39,52M); para ≥ 1.000 usá sufijo "K" (ej.: 5,68K); para porcentajes usá 2 decimales \
+con el símbolo "%" (ej.: 85,60%)."""
 
 
 # ---------------------------------------------------------------------------
